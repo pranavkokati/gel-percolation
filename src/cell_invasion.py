@@ -1,8 +1,13 @@
 """Module 4 — Agent-Based Fibroblast Invasion with MMP-Durotaxis Feedback.
 
 Fibroblasts are modelled as continuous-space, continuous-time agents that:
-  1. Migrate via REVERSED DUROTAXIS: cells move along the local stiffness
-     gradient ∇E_eff, chasing the softness front created by their own MMP.
+  1. Migrate via standard durotaxis: cells follow the local stiffness
+     gradient ∇E_eff toward the intact (stiff) scaffold ahead of them.
+     MMP secretion softens already-visited matrix, so the gradient
+     persistently points toward the remaining stiff front — fibroblasts
+     follow the stiffness gradient toward the intact scaffold (standard
+     durotaxis); MMP secretion accelerates the degradation front, creating
+     a dynamic gradient that cells continue to chase.
   2. Secrete MMP at high rate when on stiff substrate (E > E_threshold),
      creating a positive feedback that accelerates degradation.
   3. Deposit collagen proportional to local stiffness (mechanostimulated
@@ -13,9 +18,10 @@ analysed in Module 5.
 
 Key physics
 -----------
-- Reversed durotaxis: v = mu_durotaxis * grad(E) / |grad(E)|
-  Cells sense the stiffness gradient and move toward softer regions they have
-  pre-softened with MMP secretion.
+- Durotaxis (standard): v = mu_durotaxis * grad(E) / |grad(E)|
+  Cells sense the stiffness gradient and move toward stiffer regions
+  (the intact scaffold ahead). MMP secretion softens the matrix behind
+  and beside the cell, so the gradient always points toward the stiff front.
 
 - MMP secretion switch: rate = k_MMP_high when E_local > E_threshold,
   k_MMP_low otherwise.  This creates positive feedback: cells at the stiff
@@ -186,12 +192,13 @@ class SimulationState:
 
 
 class Fibroblast:
-    """A single fibroblast agent undergoing MMP-mediated reversed durotaxis.
+    """A single fibroblast agent undergoing MMP-mediated stiffness-guided migration.
 
     The cell moves via a superposition of three forces:
-      1. Reversed durotaxis: unit stiffness gradient times mu_durotaxis.
-         Cells move TOWARD high stiffness because MMP softens ahead of them,
-         creating a gradient that points back at the stiff front.
+      1. Durotaxis (standard): unit stiffness gradient times mu_durotaxis.
+         Cells move TOWARD high stiffness (intact scaffold); MMP softens
+         already-visited matrix, so the gradient persistently points toward
+         the stiff front the cell is chasing.
       2. PDGF chemotaxis: gradient of PDGF concentration times mu_chemotaxis.
       3. Stochastic noise: overdamped Langevin term with amplitude
          sqrt(2 * D_rand / dt) per coordinate (velocity units).
@@ -370,10 +377,10 @@ class Fibroblast:
         )
 
         # --- Durotaxis term ---
-        # Reversed durotaxis: cells move along the stiffness gradient direction.
-        # Because MMP secretion is highest where E > E_threshold, the softened
-        # region is behind/lateral to the cell, and the gradient points toward
-        # the remaining stiff matrix.  The cell therefore chases the stiff front.
+        # Stiffness-guided migration toward intact scaffold (standard durotaxis):
+        # cells move along the stiffness gradient direction toward stiffer regions.
+        # MMP secretion softens already-visited matrix, so the gradient
+        # persistently points toward the remaining stiff scaffold ahead.
         grad_E = self._central_difference_gradient(stiffness_field, self.position, dx)
         grad_E_mag = np.linalg.norm(grad_E)
         if grad_E_mag > 1e-10:
@@ -517,6 +524,9 @@ class CollagenNetwork:
         self._fiber_positions: List[np.ndarray] = []
         self._fiber_lengths: List[float] = []
         self._fiber_orientations: List[np.ndarray] = []
+        # Graph cache: avoid rebuilding the KDTree/graph when no new fibers were added
+        self._cached_graph: Optional[nx.Graph] = None
+        self._cached_n_fibers: int = 0
 
     # ------------------------------------------------------------------
     # Fibre management
@@ -604,7 +614,9 @@ class CollagenNetwork:
     def get_percolation_order_parameter(self) -> float:
         """Estimate P_inf = |giant component| / N for the collagen network.
 
-        Uses the proximity graph built by :py:meth:`build_graph`.
+        Uses the proximity graph built by :py:meth:`build_graph`.  The graph
+        is cached: if no new fibres have been added since the last call the
+        previous graph is reused, avoiding an O(N²) KDTree rebuild every step.
 
         Returns
         -------
@@ -616,7 +628,11 @@ class CollagenNetwork:
         if n < 2:
             return 0.0
         try:
-            G = self.build_graph()
+            # Rebuild graph only when new fibers have been added since last call
+            if n != self._cached_n_fibers or self._cached_graph is None:
+                self._cached_graph = self.build_graph()
+                self._cached_n_fibers = n
+            G = self._cached_graph
             if G.number_of_nodes() == 0:
                 return 0.0
             components = list(nx.connected_components(G))
@@ -993,7 +1009,9 @@ class WoundHealingSimulation:
 
     Implements the full "percolation inversion" dynamics:
 
-    1. Fibroblasts invade via reversed durotaxis driven by MMP-mediated softening.
+    1. Fibroblasts invade via stiffness-guided migration toward the intact scaffold
+       (standard durotaxis); MMP secretion accelerates the degradation front,
+       creating a dynamic stiffness gradient that cells continue to chase.
     2. High MMP secretion on stiff substrate creates positive feedback → accelerated
        degradation at the invasion front.
     3. Cells deposit mechanostimulated collagen as the hydrogel degrades.

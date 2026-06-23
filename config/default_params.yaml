@@ -4,12 +4,12 @@
 hydrogel:
   box_size: 50.0             # um, simulation box side length
   rho_x: 1.0                 # um^-3, crosslink junction density (synthesis-controlled)
-  r_c: 5.0                   # um, chain cutoff radius (function of chain MW)
-  k_base: 0.01               # s^-1 nM^-1, base MMP cleavage rate constant
+  r_c: 1.0                   # um, chain cutoff radius — z≈4 per node, p_c≈0.33 for RGG (was 5.0 → z≈524, p_c≈0.0026, unphysical)
+  k_base: 0.002              # s^-1 nM^-1, base MMP cleavage rate — transition at ~step 500 giving ≥450 pre-transition EWS steps (was 0.01 → transition at step 134, too early)
   tau_ionic: 3600.0          # s, ionic bond reference lifetime at body temperature
   E_activation: 50000.0      # J/mol, Arrhenius activation energy for ionic bond rupture
   bond_type: alginate         # 'alginate' (ionic + covalent) or 'peg' (purely covalent)
-  p_c_nominal: 0.2593        # dimensionless, 3D bond percolation threshold (site: 0.3116)
+  p_c_nominal: 0.33          # dimensionless, empirical RGG threshold for z≈4 (Bethe: 1/(z-1)≈0.33); 0.2593 is the cubic lattice value
 
 mechanics:
   f_elastic: 2.1             # elastic/conductivity exponent (bond-bending: 2.1; central-force: 3.75)

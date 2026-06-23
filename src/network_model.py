@@ -64,7 +64,7 @@ Usage example
 -------------
 >>> from network_model import HydrogelParams, HydrogelNetwork
 >>> import numpy as np
->>> params = HydrogelParams(box_size=50.0, rho_x=1.0, r_c=5.0)
+>>> params = HydrogelParams(box_size=50.0, rho_x=1.0, r_c=1.0)
 >>> net = HydrogelNetwork(params, seed=42)
 >>> print(net.get_percolation_order_parameter())
 >>> # Simulate with a uniform MMP field of concentration 1.0
@@ -88,6 +88,8 @@ from typing import Dict, List, Optional, Tuple
 import networkx as nx
 import numpy as np
 from scipy.spatial import KDTree
+
+from .utils import compute_giant_component_fraction
 
 __all__ = [
     "HydrogelParams",
@@ -143,20 +145,29 @@ class HydrogelParams:
         Reference temperature for Arrhenius model [K].  Default 310.15 (37 °C).
     T : float
         Simulation temperature [K].  Default 310.15 (37 °C).
+    p_c : float
+        Percolation threshold used as a starting guess in fitters.  Default
+        0.2593, which is the bond percolation threshold for a simple cubic
+        lattice — **not** appropriate for a random geometric graph (RGG).
+        Empirical measurement via :py:meth:`HydrogelNetwork.measure_percolation_threshold`
+        is preferred for RGG topologies.
     """
 
     box_size: float = 50.0
     rho_x: float = 1.0
-    r_c: float = 5.0
+    r_c: float = 1.0          # 1.0 µm → z≈4, p_c≈0.33 for RGG (was 5.0 → z≈524, unphysical)
     mu_L: float = float(np.log(2.0))        # lognormal location  [ln µm]
     sigma_L: float = float(np.sqrt(np.log(1.75)))  # Ð ≈ 1.75
     covalent_fraction: float = 0.70
-    k_base: float = 0.01
+    k_base: float = 0.002     # s⁻¹ nM⁻¹; transition at ~step 500, giving ≥450 EWS steps
     alpha_access: float = 0.5
     tau_ionic: float = 3600.0
     E_activation: float = 50_000.0
     T_ref: float = 310.15
     T: float = 310.15
+    # Default 0.2593 is the cubic-lattice bond percolation threshold; for a
+    # random geometric graph use HydrogelNetwork.measure_percolation_threshold().
+    p_c: float = 0.2593
 
     # ------------------------------------------------------------------ #
     # Derived quantities                                                   #
@@ -646,6 +657,60 @@ class HydrogelNetwork:
         )
 
         return grid_coords, local_p_values
+
+    def measure_percolation_threshold(
+        self,
+        n_p_points: int = 30,
+        n_trials: int = 5,
+        rng_seed: int = 0,
+    ) -> float:
+        """Estimate p_c empirically via bond dilution on this network topology.
+
+        Progressively removes bonds at random and tracks P_inf(p). The
+        threshold is the inflection point (steepest descent) of P_inf(p).
+        This is network-specific and supersedes the lattice value 0.2593.
+
+        Parameters
+        ----------
+        n_p_points : int
+            Number of bond-fraction values to probe in [0, 1].
+        n_trials : int
+            Number of independent dilution trials (averaged for smoothing).
+        rng_seed : int
+            Seed for the random number generator.
+
+        Returns
+        -------
+        float
+            Estimated percolation threshold p_c.
+        """
+        rng = np.random.default_rng(rng_seed)
+        all_edges = list(self.graph.edges())
+        n_edges = len(all_edges)
+        if n_edges == 0:
+            return 0.5
+
+        p_values = np.linspace(0.05, 0.95, n_p_points)
+        P_inf_mean = np.zeros(n_p_points)
+
+        for _ in range(n_trials):
+            perm = rng.permutation(n_edges)
+            for j, p in enumerate(p_values):
+                n_keep = int(round(p * n_edges))
+                keep_indices = perm[:n_keep]
+                sub_edges = [all_edges[i] for i in keep_indices]
+                nodes = list(self.graph.nodes())
+                H = nx.Graph()
+                H.add_nodes_from(nodes)
+                H.add_edges_from(sub_edges)
+                P_inf_mean[j] += compute_giant_component_fraction(H)
+
+        P_inf_mean /= n_trials
+
+        # p_c = inflection point (maximum of -dP_inf/dp, i.e., steepest descent)
+        dP = -np.gradient(P_inf_mean, p_values)
+        p_c_idx = int(np.argmax(dP))
+        return float(p_values[p_c_idx])
 
     # ------------------------------------------------------------------ #
     # Serialisation                                                        #

@@ -31,7 +31,7 @@ def small_hydrogel_params():
     return HydrogelParams(
         box_size=20.0,
         rho_x=0.5,
-        r_c=5.0,
+        r_c=1.0,
         covalent_fraction=1.0,
     )
 
@@ -40,12 +40,13 @@ def small_hydrogel_params():
 def large_hydrogel_params():
     """HydrogelParams for a dense, well-connected network clearly above p_c.
 
-    box_size = 15 µm, rho_x = 2.0 µm⁻³ → N ≈ 675 nodes — fast but well above p_c.
+    box_size = 15 µm, rho_x = 2.0 µm⁻³ → N ≈ 6750 nodes, r_c=1 µm → z≈8.4, p_c≈0.15.
+    With all bonds present (p=1) the giant component is essentially the whole network.
     """
     return HydrogelParams(
         box_size=15.0,
         rho_x=2.0,
-        r_c=5.0,
+        r_c=1.0,
         covalent_fraction=1.0,
     )
 

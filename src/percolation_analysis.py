@@ -741,12 +741,15 @@ class CriticalExponentFitter:
     def fit_percolation_exponent(
         p_values: np.ndarray,
         order_parameter_values: np.ndarray,
-        p_c_guess: float = _P_C_3D,
+        p_c_guess: Optional[float] = _P_C_3D,
     ) -> Dict[str, float]:
         """Fit P_inf ~ |p - p_c|^beta near p_c.
 
-        Only data points with p > p_c_guess are used in the fit to ensure
-        the power law is evaluated on the percolating side.
+        If ``p_c_guess`` is provided (not None), it is used as a fixed
+        threshold and only data points with p > p_c_guess enter the fit
+        (existing behaviour).  If ``p_c_guess`` is None, both p_c and beta
+        are fitted simultaneously as free parameters, with p_c constrained
+        to [0.05, 0.5].
 
         Parameters
         ----------
@@ -754,8 +757,10 @@ class CriticalExponentFitter:
             Bond occupation probabilities.
         order_parameter_values : np.ndarray, shape (N,)
             Corresponding P_inf values.
-        p_c_guess : float
-            Initial guess for the percolation threshold.  Default 0.2593.
+        p_c_guess : float or None
+            Initial guess for the percolation threshold.  Default 0.2593
+            (simple cubic lattice).  Pass None to fit p_c as a free
+            parameter alongside beta (preferred for RGG topologies).
 
         Returns
         -------
@@ -768,41 +773,32 @@ class CriticalExponentFitter:
         p_values = np.asarray(p_values, dtype=float)
         order_parameter_values = np.asarray(order_parameter_values, dtype=float)
 
-        above_pc = p_values > p_c_guess
-        if above_pc.sum() < 3:
-            logger.warning(
-                "fit_percolation_exponent: fewer than 3 points above p_c_guess; "
-                "returning defaults."
-            )
-            return {
-                "p_c_fit": float(p_c_guess),
-                "beta_fit": _BETA_3D,
-                "beta_3d_expected": _BETA_3D,
-                "fit_quality": 0.0,
-            }
+        if p_c_guess is None:
+            # Fit both p_c and beta simultaneously
+            p_vals = p_values
+            P_inf_vals = order_parameter_values
 
-        p_fit = p_values[above_pc]
-        P_fit = order_parameter_values[above_pc]
+            def model_free(p, p_c_fit, beta_fit):
+                eps = np.maximum(p - p_c_fit, 0.0)
+                return eps ** beta_fit
 
-        def _model(p: np.ndarray, p_c: float, beta: float) -> np.ndarray:
-            eps = np.abs(p - p_c)
-            eps = np.where(eps < 1e-10, 1e-10, eps)
-            return eps ** beta
+            try:
+                popt, _ = curve_fit(
+                    model_free, p_vals, P_inf_vals,
+                    p0=[0.3, 0.418],
+                    bounds=([0.05, 0.1], [0.5, 2.0]),
+                    maxfev=5000,
+                )
+                p_c_fit, beta_fit = popt
+            except RuntimeError:
+                p_c_fit, beta_fit = p_c_guess or 0.3, 0.418
 
-        try:
-            popt, _ = curve_fit(
-                _model,
-                p_fit,
-                P_fit,
-                p0=[p_c_guess, _BETA_3D],
-                bounds=([0.0, 0.05], [1.0, 3.0]),
-                maxfev=8000,
-            )
-            p_c_fit, beta_fit = float(popt[0]), float(popt[1])
+            p_c_fit = float(p_c_fit)
+            beta_fit = float(beta_fit)
 
-            P_pred = _model(p_fit, *popt)
-            ss_res = float(np.sum((P_fit - P_pred) ** 2))
-            ss_tot = float(np.sum((P_fit - P_fit.mean()) ** 2))
+            P_pred = model_free(p_vals, p_c_fit, beta_fit)
+            ss_res = float(np.sum((P_inf_vals - P_pred) ** 2))
+            ss_tot = float(np.sum((P_inf_vals - P_inf_vals.mean()) ** 2))
             r2 = 1.0 - ss_res / (ss_tot + 1e-30)
 
             return {
@@ -811,14 +807,60 @@ class CriticalExponentFitter:
                 "beta_3d_expected": _BETA_3D,
                 "fit_quality": float(r2),
             }
-        except Exception as exc:
-            logger.warning("fit_percolation_exponent failed: %s", exc)
-            return {
-                "p_c_fit": float(p_c_guess),
-                "beta_fit": _BETA_3D,
-                "beta_3d_expected": _BETA_3D,
-                "fit_quality": 0.0,
-            }
+
+        else:
+            # Original fixed-p_c fit (existing code)
+            above_pc = p_values > p_c_guess
+            if above_pc.sum() < 3:
+                logger.warning(
+                    "fit_percolation_exponent: fewer than 3 points above p_c_guess; "
+                    "returning defaults."
+                )
+                return {
+                    "p_c_fit": float(p_c_guess),
+                    "beta_fit": _BETA_3D,
+                    "beta_3d_expected": _BETA_3D,
+                    "fit_quality": 0.0,
+                }
+
+            p_fit = p_values[above_pc]
+            P_fit = order_parameter_values[above_pc]
+
+            def _model(p: np.ndarray, p_c: float, beta: float) -> np.ndarray:
+                eps = np.abs(p - p_c)
+                eps = np.where(eps < 1e-10, 1e-10, eps)
+                return eps ** beta
+
+            try:
+                popt, _ = curve_fit(
+                    _model,
+                    p_fit,
+                    P_fit,
+                    p0=[p_c_guess, _BETA_3D],
+                    bounds=([0.0, 0.05], [1.0, 3.0]),
+                    maxfev=8000,
+                )
+                p_c_fit, beta_fit = float(popt[0]), float(popt[1])
+
+                P_pred = _model(p_fit, *popt)
+                ss_res = float(np.sum((P_fit - P_pred) ** 2))
+                ss_tot = float(np.sum((P_fit - P_fit.mean()) ** 2))
+                r2 = 1.0 - ss_res / (ss_tot + 1e-30)
+
+                return {
+                    "p_c_fit": p_c_fit,
+                    "beta_fit": beta_fit,
+                    "beta_3d_expected": _BETA_3D,
+                    "fit_quality": float(r2),
+                }
+            except Exception as exc:
+                logger.warning("fit_percolation_exponent failed: %s", exc)
+                return {
+                    "p_c_fit": float(p_c_guess),
+                    "beta_fit": _BETA_3D,
+                    "beta_3d_expected": _BETA_3D,
+                    "fit_quality": 0.0,
+                }
 
     # ------------------------------------------------------------------
     # Modulus scaling exponent

@@ -133,7 +133,7 @@ Maps the local bond fraction p(x,t) to mechanical observables. Near p_c uses cri
 Detects critical slowing down via rolling AR1 autocorrelation, rolling variance, and — uniquely — H₁ persistent homology loop count via Ripser. Quantifies the lead time by which topological loops dissolve before bulk G' variance diverges.
 
 **Module 4 — `src/cell_invasion.py`**  
-Agent-based fibroblast model with reversed durotaxis, MMP secretion feedback (high on stiff substrate), collagen deposition, and MMP/PDGF reaction-diffusion solvers. Builds a competing collagen percolation network as cells invade.
+Agent-based fibroblast model with standard durotaxis (stiffness-guided migration toward the intact scaffold), MMP secretion feedback (high on stiff substrate), collagen deposition, and MMP/PDGF reaction-diffusion solvers. Fibroblasts follow the stiffness gradient toward the intact scaffold (standard durotaxis); MMP secretion accelerates the degradation front, creating a dynamic gradient that cells continue to chase. Builds a competing collagen percolation network as cells invade.
 
 **Module 5 — `src/percolation_analysis.py`**  
 Tracks both P∞_hydrogel and P∞_collagen simultaneously. Computes handoff time t* and quality Q. Includes 2D parameter space sweeper and critical exponent fitting.

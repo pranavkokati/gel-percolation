@@ -1,0 +1,42 @@
+# Core scientific stack
+numpy>=1.24.0
+scipy>=1.10.0
+matplotlib>=3.7.0
+networkx>=3.1
+
+# Data handling
+pandas>=2.0.0
+
+# Parallelisation
+joblib>=1.3.0
+
+# Configuration
+PyYAML>=6.0
+
+# Progress bars
+tqdm>=4.65.0
+
+# Topological Data Analysis
+ripser>=0.6.4
+persim>=0.3.3
+
+# Optional: faster TDA (alternative to ripser)
+gudhi>=3.8.0
+
+# Visualization (enhanced plots)
+seaborn>=0.12.0
+
+# Agent-based modelling
+mesa>=2.1.0
+
+# Jupyter notebooks
+jupyter>=1.0.0
+notebook>=7.0.0
+ipykernel>=6.22.0
+
+# Testing
+pytest>=7.4.0
+pytest-cov>=4.1.0
+
+# Code quality
+black>=23.0.0

@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Simulation outputs (can be large)
+results/
+*.npy
+*.npz
+*.pkl
+*.h5
+*.hdf5
+
+# Matplotlib figures (regenerated)
+*.png
+*.pdf
+*.svg
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Config overrides (keep defaults, ignore local overrides)
+config/local_*.yaml

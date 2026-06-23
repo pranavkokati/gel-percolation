@@ -707,8 +707,8 @@ class HydrogelNetwork:
 
         P_inf_mean /= n_trials
 
-        # p_c = inflection point (maximum of -dP_inf/dp, i.e., steepest descent)
-        dP = -np.gradient(P_inf_mean, p_values)
+        # p_c = inflection point (maximum of dP_inf/dp, i.e., steepest ascent)
+        dP = np.gradient(P_inf_mean, p_values)
         p_c_idx = int(np.argmax(dP))
         return float(p_values[p_c_idx])
 

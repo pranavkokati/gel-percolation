@@ -243,16 +243,35 @@ class EarlyWarningSignalDetector:
             else None
         )
 
+        # Significance flags: Kendall tau > 0.3 AND p-value < 0.05
+        tau_ar1_val = float(tau_ar1) if np.isfinite(tau_ar1) else None
+        tau_var_val = float(tau_var) if np.isfinite(tau_var) else None
+        p_ar1_val = float(p_ar1) if np.isfinite(p_ar1) else None
+        p_var_val = float(p_var) if np.isfinite(p_var) else None
+
+        ar1_significant = bool(
+            tau_ar1_val is not None and p_ar1_val is not None
+            and tau_ar1_val > 0.3 and p_ar1_val < 0.05
+        )
+        var_significant = bool(
+            tau_var_val is not None and p_var_val is not None
+            and tau_var_val > 0.3 and p_var_val < 0.05
+        )
+        ews_detected = ar1_significant or var_significant
+
         return {
             "ar1": ar1,
             "variance": var,
-            "kendall_tau_ar1": float(tau_ar1) if np.isfinite(tau_ar1) else None,
-            "kendall_tau_var": float(tau_var) if np.isfinite(tau_var) else None,
-            "ar1_pvalue": float(p_ar1) if np.isfinite(p_ar1) else None,
-            "var_pvalue": float(p_var) if np.isfinite(p_var) else None,
+            "kendall_tau_ar1": tau_ar1_val,
+            "kendall_tau_var": tau_var_val,
+            "ar1_pvalue": p_ar1_val,
+            "var_pvalue": p_var_val,
             "ews_onset_time": ews_onset_time,
             "transition_time": transition_time,
             "lead_time": lead_time,
+            "ar1_significant": ar1_significant,
+            "var_significant": var_significant,
+            "ews_detected": ews_detected,
         }
 
     def detect_transition_time(
@@ -324,6 +343,50 @@ class EarlyWarningSignalDetector:
         if onset_idx is None:
             return 0.0
         return float(times[transition_time_idx] - times[onset_idx])
+
+    # ------------------------------------------------------------------
+    # Significance interpretation
+    # ------------------------------------------------------------------
+
+    @classmethod
+    def interpret_significance(cls, ews_results: dict) -> str:
+        """Return a human-readable summary of EWS significance.
+
+        Parameters
+        ----------
+        ews_results : dict
+            Output of :py:meth:`compute_ews_indicators`.
+
+        Returns
+        -------
+        str
+            A single-line description of whether EWS was detected and which
+            indicators were significant, e.g.:
+            "EWS DETECTED: AR1 (τ=0.68, p=0.002) + Variance (τ=0.71, p=0.001) both significant"
+        """
+        tau_ar1 = ews_results.get("kendall_tau_ar1")
+        tau_var = ews_results.get("kendall_tau_var")
+        p_ar1 = ews_results.get("ar1_pvalue")
+        p_var = ews_results.get("var_pvalue")
+        ar1_sig = ews_results.get("ar1_significant", False)
+        var_sig = ews_results.get("var_significant", False)
+
+        def _fmt_tau(tau, p) -> str:
+            tau_str = f"{tau:.2f}" if tau is not None else "N/A"
+            p_str = f"{p:.3f}" if p is not None else "N/A"
+            return f"τ={tau_str}, p={p_str}"
+
+        ar1_desc = f"AR1 ({_fmt_tau(tau_ar1, p_ar1)})"
+        var_desc = f"Variance ({_fmt_tau(tau_var, p_var)})"
+
+        if ar1_sig and var_sig:
+            return f"EWS DETECTED: {ar1_desc} + {var_desc} both significant"
+        elif ar1_sig:
+            return f"EWS DETECTED: {ar1_desc} significant; {var_desc} below threshold"
+        elif var_sig:
+            return f"EWS DETECTED: {var_desc} significant; {ar1_desc} below threshold"
+        else:
+            return f"EWS NOT DETECTED: {ar1_desc} and {var_desc} below threshold"
 
     # ------------------------------------------------------------------
     # Private helpers

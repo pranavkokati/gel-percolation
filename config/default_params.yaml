@@ -5,7 +5,7 @@ hydrogel:
   box_size: 50.0             # um, simulation box side length
   rho_x: 1.0                 # um^-3, crosslink junction density (synthesis-controlled)
   r_c: 1.0                   # um, chain cutoff radius — z≈4 per node, p_c≈0.33 for RGG (was 5.0 → z≈524, p_c≈0.0026, unphysical)
-  k_base: 0.002              # s^-1 nM^-1, base MMP cleavage rate — transition at ~step 500 giving ≥450 pre-transition EWS steps (was 0.01 → transition at step 134, too early)
+  k_base: 0.0012              # s^-1 nM^-1; with p_c≈0.547, transition at step ~500, giving ≥500 pre-transition EWS steps
   tau_ionic: 3600.0          # s, ionic bond reference lifetime at body temperature
   E_activation: 50000.0      # J/mol, Arrhenius activation energy for ionic bond rupture
   bond_type: alginate         # 'alginate' (ionic + covalent) or 'peg' (purely covalent)
@@ -39,7 +39,7 @@ cells:
   E_threshold: 500.0         # Pa, stiffness threshold for high/low MMP secretion switch
   k_MMP_high: 1.0e-3         # nM s^-1 cell^-1, MMP secretion rate on stiff substrate
   k_MMP_low: 1.0e-5          # nM s^-1 cell^-1, MMP secretion rate on soft substrate
-  r_col: 0.01                # um s^-1 per (Pa/E_ref), collagen/matrix deposition rate
+  r_col: 0.1                 # um s^-1 per (Pa/E_ref), collagen/matrix deposition rate (10x increase: fiber length 0.1 um/step, physically plausible)
   E_ref: 1000.0              # Pa, reference stiffness used in collagen deposition scaling
 
 simulation:

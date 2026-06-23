@@ -159,7 +159,7 @@ class HydrogelParams:
     mu_L: float = float(np.log(2.0))        # lognormal location  [ln µm]
     sigma_L: float = float(np.sqrt(np.log(1.75)))  # Ð ≈ 1.75
     covalent_fraction: float = 0.70
-    k_base: float = 0.002     # s⁻¹ nM⁻¹; transition at ~step 500, giving ≥450 EWS steps
+    k_base: float = 0.0012    # s⁻¹ nM⁻¹; transition at ~step 500 with p_c≈0.547, [MMP]=1 nM
     alpha_access: float = 0.5
     tau_ionic: float = 3600.0
     E_activation: float = 50_000.0

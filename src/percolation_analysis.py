@@ -119,16 +119,22 @@ class DualPercolationTracker:
     >>> fig = tracker.plot_dual_percolation()
     """
 
-    def __init__(
-        self,
-        p_c_hydrogel: float = _P_C_3D,
-        p_c_collagen: float = _P_C_3D,
-    ) -> None:
-        self.p_c_hydrogel: float = float(p_c_hydrogel)
-        self.p_c_collagen: float = float(p_c_collagen)
+    def __init__(self, p_c_hydrogel: float = 0.33, p_c_collagen: float = 0.33) -> None:
+        """
+        Parameters
+        ----------
+        p_c_hydrogel : float
+            Percolation threshold for the hydrogel network.  Default 0.33 (Bethe
+            estimate for z≈4 RGG); use measured value from
+            HydrogelNetwork.measure_percolation_threshold() for accuracy.
+        p_c_collagen : float
+            Percolation threshold for the collagen network.  Default 0.33.
+        """
+        self.p_c_hydrogel = p_c_hydrogel
+        self.p_c_collagen = p_c_collagen
         self._times: List[float] = []
-        self._p_hydrogel: List[float] = []
-        self._p_collagen: List[float] = []
+        self._p_hyd: List[float] = []
+        self._p_col: List[float] = []
 
     # ------------------------------------------------------------------
     # Data ingestion
@@ -152,15 +158,15 @@ class DualPercolationTracker:
             Collagen percolation order parameter P_inf in [0, 1].
         """
         self._times.append(float(time))
-        self._p_hydrogel.append(float(p_inf_hydrogel))
-        self._p_collagen.append(float(p_inf_collagen))
+        self._p_hyd.append(float(p_inf_hydrogel))
+        self._p_col.append(float(p_inf_collagen))
 
     def get_arrays(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Return ``(times, p_hydrogel, p_collagen)`` as numpy arrays."""
         return (
             np.asarray(self._times, dtype=float),
-            np.asarray(self._p_hydrogel, dtype=float),
-            np.asarray(self._p_collagen, dtype=float),
+            np.asarray(self._p_hyd, dtype=float),
+            np.asarray(self._p_col, dtype=float),
         )
 
     # ------------------------------------------------------------------

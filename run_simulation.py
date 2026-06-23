@@ -68,7 +68,7 @@ def build_params_from_config(cfg: dict):
     hp = HydrogelParams(
         box_size=h.get("box_size", 50.0),
         rho_x=h.get("rho_x", 1.0),
-        r_c=h.get("r_c", 5.0),
+        r_c=h.get("r_c", 1.0),
         k_base=h.get("k_base", 0.01),
         tau_ionic=h.get("tau_ionic", 3600.0),
         E_activation=h.get("E_activation", 50000.0),
@@ -106,7 +106,7 @@ def build_params_from_config(cfg: dict):
         gamma_sus=m.get("gamma_sus", 1.8),
     )
     mp = MechanicsParams(
-        p_c=h.get("p_c_nominal", m.get("p_c", 0.2593)),
+        p_c=h.get("p_c_nominal", m.get("p_c", 0.33)),
         p_crossover=m.get("p_crossover", 0.05),
         T=m.get("T", 310.15),
         E_ref=m.get("E_ref", 1000.0),
@@ -124,7 +124,7 @@ def build_params_from_config(cfg: dict):
 def run_single(cfg: dict, no_plots: bool = False) -> None:
     """Run a single wound-healing simulation and save all results."""
     from src.network_model import HydrogelNetwork
-    from src.mechanical_properties import PercolationMechanics
+    from src.mechanical_properties import PercolationMechanics, MechanicsParams
     from src.cell_invasion import WoundHealingSimulation
     from src.early_warning import (
         EarlyWarningSignalDetector,
@@ -154,6 +154,25 @@ def run_single(cfg: dict, no_plots: bool = False) -> None:
     network = HydrogelNetwork(hp, seed=sp.random_seed)
     logger.info("Network: %s", network)
 
+    # --- Measure empirical p_c for this network topology ---
+    logger.info("Measuring empirical percolation threshold (n_p_points=40, n_trials=5)...")
+    measured_p_c = network.measure_percolation_threshold(n_p_points=40, n_trials=5, rng_seed=0)
+    logger.info("  Empirical p_c = %.4f (config nominal = %.4f)", measured_p_c, mp.p_c)
+    mp = MechanicsParams(
+        p_c=measured_p_c,
+        p_crossover=mp.p_crossover,
+        T=mp.T,
+        rho_chain_ref=mp.rho_chain_ref,
+        E_ref=mp.E_ref,
+        omega_ref=mp.omega_ref,
+        kB=mp.kB,
+        exponents=mp.exponents,
+    )
+    (output_dir / "measured_p_c.txt").write_text(
+        f"measured_p_c={measured_p_c:.6f}\nr_c={hp.r_c}\nbox_size={hp.box_size}\n",
+        encoding="utf-8",
+    )
+
     # --- Mechanics callable wrapping Module 2 ---
     mech = PercolationMechanics(mp)
 
@@ -174,18 +193,33 @@ def run_single(cfg: dict, no_plots: bool = False) -> None:
     sim.initialize()
 
     # --- Run with tqdm progress bar ---
+    # Pre-compute TDA snapshot interval (at most 20 snapshots over the run)
+    tda_snap_every = max(1, sp.n_steps // 20)
+    tda_snapshots: list = []
+    tda_snap_step_times: list = []
+
     if _HAS_TQDM:
         pbar = tqdm(total=sp.n_steps, desc="Single simulation", unit="step")
-        for _ in range(sp.n_steps):
+        for step_i in range(sp.n_steps):
             sim.step()
+            if step_i % tda_snap_every == 0:
+                tda_snapshots.append(
+                    (network.get_node_positions(), network.get_active_edges())
+                )
+                tda_snap_step_times.append(step_i * sp.dt)
             pbar.update(1)
         pbar.close()
     else:
         logger.info("Running %d steps...", sp.n_steps)
-        for i in range(sp.n_steps):
+        for step_i in range(sp.n_steps):
             sim.step()
-            if i % max(sp.n_steps // 10, 1) == 0:
-                logger.info("  Step %d / %d", i, sp.n_steps)
+            if step_i % tda_snap_every == 0:
+                tda_snapshots.append(
+                    (network.get_node_positions(), network.get_active_edges())
+                )
+                tda_snap_step_times.append(step_i * sp.dt)
+            if step_i % max(sp.n_steps // 10, 1) == 0:
+                logger.info("  Step %d / %d", step_i, sp.n_steps)
 
     history = sim.get_history()
     logger.info("Simulation complete. %d snapshots recorded.", len(history))
@@ -194,8 +228,8 @@ def run_single(cfg: dict, no_plots: bool = False) -> None:
     logger.info("Running Early Warning Signal (EWS) analysis...")
     times = np.array([s.time for s in history], dtype=float)
     p_hyd = np.array([s.hydrogel_p_inf for s in history], dtype=float)
-    # Use P_inf * E_ref as a proxy for bulk G'(t)
-    G_prime_proxy = p_hyd * mp.E_ref
+    # Use critical-scaling G'(p) from PercolationMechanics — correct near p_c
+    G_prime_proxy = np.array([mech.compute_shear_modulus(float(p), omega=1.0) for p in p_hyd])
 
     ews_cfg = cfg.get("ews", {})
     detector = EarlyWarningSignalDetector(
@@ -219,19 +253,12 @@ def run_single(cfg: dict, no_plots: bool = False) -> None:
     )
     lifetime_thr = ews_cfg.get("lifetime_threshold_tda", 0.5)
 
-    # Build (positions, adjacency) tuples from recorded history snapshots.
-    # We sub-sample to at most 20 snapshots to keep TDA tractable.
-    n_snap = len(history)
-    snap_indices = np.linspace(0, n_snap - 1, min(20, n_snap), dtype=int)
-    tda_snapshots = []
-    for idx in snap_indices:
-        pos = network.get_node_positions()
-        edges = network.get_active_edges()
-        tda_snapshots.append((pos, edges))
+    # tda_snapshots and tda_snap_step_times were built during the simulation loop above.
+    tda_times = np.array(tda_snap_step_times, dtype=float)
 
     tda_timeseries = tda.compute_topology_timeseries(tda_snapshots)
     h1_counts = tda_timeseries["n_long_lived_h1"]
-    tda_times = times[snap_indices]
+    # tda_times already built during simulation loop (step-aligned)
     h1_peak_time = tda.detect_h1_peak_time(h1_counts, tda_times)
     logger.info("H1 loop peak at t=%.1f s", h1_peak_time)
 
@@ -499,7 +526,7 @@ def run_validate(cfg: dict) -> bool:
     # 5. Network construction
     net = None
     try:
-        small_hp = HydrogelParams(box_size=20.0, rho_x=1.0, r_c=5.0)
+        small_hp = HydrogelParams(box_size=20.0, rho_x=1.0, r_c=1.0)
         net = HydrogelNetwork(small_hp, seed=0)
         N = net.graph.number_of_nodes()
         check("HydrogelNetwork constructs without error (N > 0)", N > 0, "> 0 nodes", N)
@@ -571,7 +598,7 @@ def demo() -> list:
     except ImportError:
         _HAS_TQDM = False
 
-    hp = HydrogelParams(box_size=20.0, rho_x=1.0, r_c=5.0)
+    hp = HydrogelParams(box_size=20.0, rho_x=1.0, r_c=1.0)
     cp = CellParams()
     sp = SimParams(
         n_steps=100,

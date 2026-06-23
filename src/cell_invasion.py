@@ -110,7 +110,7 @@ class CellParams:
     E_threshold: float = 500.0
     k_MMP_high: float = 1e-3
     k_MMP_low: float = 1e-5
-    r_col: float = 0.01
+    r_col: float = 0.1
     E_ref: float = 1000.0
     cell_radius: float = 10.0
 

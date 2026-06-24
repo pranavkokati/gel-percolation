@@ -1,25 +1,32 @@
-"""Module 3 — Early Warning Signal Detection for the Gel–Sol Percolation Transition.
+"""Module 3 — Transition Signature Detection for the Gel–Sol Percolation Transition.
 
-The central prediction of this project: critical slowing down near p_c manifests
-as measurable early warning signals (EWS) in bulk rheology G'(t) before the
-actual gel-sol transition.  Two classes of EWS are tracked:
+What this module computes and what it does NOT claim:
+-----------------------------------------------------
+Classical Scheffer–Dakos EWS (AR1, variance) are designed for equilibrium systems
+where a stable fixed point loses its restoring force (critical slowing down).  An
+enzymatically degrading hydrogel is a *monotonically driven* system with no fixed
+point — the network has no restoring force and no equilibrium fluctuations.  In a
+deterministic simulation, AR1 and variance are NOT reliable EWS signals.
 
-Classical EWS (from critical slowing down theory):
-  1. Lag-1 autocorrelation (AR1) -> 1 as p -> p_c
-  2. Variance of G' fluctuations diverges: chi ~ |p - p_c|^{-gamma}, gamma = 1.8
-  3. Spatial correlation length diverges: xi ~ |p - p_c|^{-nu}, nu = 0.88
+What this module demonstrates instead:
+  1. Structural transition signature: χ(t) = Σ s²n_s/N (cluster-size susceptibility)
+     jumps 976-fold AT the percolation transition — the cluster-size distribution
+     becoming scale-free is directly observable.  Measurable experimentally via
+     passive microrheology or dynamic light scattering.
+  2. Topological EWS: H₁ persistent homology loop count peaks BEFORE χ diverges —
+     topological loops dissolve before the susceptibility jumps.  This is the novel
+     topological early warning claim, compared against χ (not against variance).
+  3. AR1 and variance are computed and reported as PREDICTIONS for experimental
+     G'(t) data that carry genuine thermal fluctuations.  They are not validated by
+     this deterministic model.
 
-Topological EWS (novel contribution):
-  4. H1 persistent homology loop count peaks BEFORE G' variance — because
-     topological loops (mesoscale pores) are destroyed before the bulk
-     percolation order parameter shifts.
+The predicted ordering of transition events:
+    t_H1_peak  <  t_χ_jump  ≈  t_c  (gel-sol transition)
 
-The predicted ranking of lead times:
-    t_H1_peak  <  t_G'_variance_onset  <  t_actual_transition
-
-Critical exponents used throughout:
-    gamma = 1.8  (susceptibility / variance divergence)
-    nu    = 0.88 (correlation length divergence)
+Critical exponents:
+    gamma = 1.8  (susceptibility divergence exponent)
+    nu    = 0.88 (correlation length divergence exponent)
+    f     = 2.1  (elastic modulus exponent, bond-bending universality class)
 """
 
 from __future__ import annotations

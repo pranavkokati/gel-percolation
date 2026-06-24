@@ -26,10 +26,12 @@ results/
 *.h5
 *.hdf5
 
-# Matplotlib figures (regenerated)
+# Matplotlib figures (regenerated) — figures/ directory is tracked for GitHub rendering
 *.png
 *.pdf
 *.svg
+!figures/*.png
+!figures/*.pdf
 
 # IDE
 .vscode/

@@ -712,6 +712,31 @@ class HydrogelNetwork:
         p_c_idx = int(np.argmax(dP))
         return float(p_values[p_c_idx])
 
+    def compute_susceptibility(self) -> float:
+        """Percolation susceptibility χ = Σ s² n_s / N (non-spanning clusters).
+
+        Diverges as χ ~ |p − p_c|^{-γ} with γ = 1.8 near p_c.  This is the
+        theoretically correct diverging quantity for percolation EWS; it provides
+        a physically grounded early warning signal that avoids the finite-size
+        limitations of variance-based EWS.
+
+        Returns
+        -------
+        float
+            χ in units of nodes.  Returns 0.0 for empty graphs.
+        """
+        N = self.graph.number_of_nodes()
+        if N == 0:
+            return 0.0
+        components = list(nx.connected_components(self.graph))
+        if not components:
+            return 0.0
+        sizes = [len(c) for c in components]
+        max_size = max(sizes)
+        # Sum s² over all clusters EXCEPT the spanning (largest) component
+        chi = sum(s * s for s in sizes if s < max_size) / N
+        return float(chi)
+
     # ------------------------------------------------------------------ #
     # Serialisation                                                        #
     # ------------------------------------------------------------------ #

@@ -193,10 +193,11 @@ def run_single(cfg: dict, no_plots: bool = False) -> None:
     sim.initialize()
 
     # --- Run with tqdm progress bar ---
-    # Pre-compute TDA snapshot interval (at most 20 snapshots over the run)
+    # Pre-compute TDA/chi snapshot interval (at most 20 snapshots over the run)
     tda_snap_every = max(1, sp.n_steps // 20)
     tda_snapshots: list = []
     tda_snap_step_times: list = []
+    chi_series: list = []   # susceptibility χ(t) = Σ s² n_s / N at each snap
 
     if _HAS_TQDM:
         pbar = tqdm(total=sp.n_steps, desc="Single simulation", unit="step")
@@ -207,6 +208,7 @@ def run_single(cfg: dict, no_plots: bool = False) -> None:
                     (network.get_node_positions(), network.get_active_edges())
                 )
                 tda_snap_step_times.append(step_i * sp.dt)
+                chi_series.append(network.compute_susceptibility())
             pbar.update(1)
         pbar.close()
     else:
@@ -218,6 +220,7 @@ def run_single(cfg: dict, no_plots: bool = False) -> None:
                     (network.get_node_positions(), network.get_active_edges())
                 )
                 tda_snap_step_times.append(step_i * sp.dt)
+                chi_series.append(network.compute_susceptibility())
             if step_i % max(sp.n_steps // 10, 1) == 0:
                 logger.info("  Step %d / %d", step_i, sp.n_steps)
 
@@ -237,6 +240,8 @@ def run_single(cfg: dict, no_plots: bool = False) -> None:
         lag=ews_cfg.get("lag", 1),
     )
     ews_results = detector.compute_ews_indicators(G_prime_proxy, times)
+    chi_array = np.array(chi_series, dtype=float)
+    chi_times_arr = np.array(tda_snap_step_times, dtype=float)
     logger.info(
         "EWS: Kendall τ(AR1)=%.3f  p=%.3f | Kendall τ(var)=%.3f  p=%.3f",
         ews_results.get("kendall_tau_ar1") or 0.0,
@@ -280,8 +285,47 @@ def run_single(cfg: dict, no_plots: bool = False) -> None:
     all_results["ews_variance"] = ews_results.get("variance", np.array([]))
     all_results["h1_counts"] = h1_counts
     all_results["h1_times"] = tda_times
+    all_results["chi_series"] = chi_array
+    all_results["chi_times"] = chi_times_arr
 
     SummaryReporter.export_results(str(output_dir), history, all_results)
+
+    # --- HDF5 archive (self-describing for Zenodo deposit) ---
+    try:
+        import h5py
+        hdf5_path = output_dir / "results.h5"
+        with h5py.File(hdf5_path, "w") as f:
+            f.attrs["description"] = "gel-percolation simulation results"
+            f.attrs["box_size_um"] = hp.box_size
+            f.attrs["rho_x"] = hp.rho_x
+            f.attrs["r_c_um"] = hp.r_c
+            f.attrs["k_base"] = hp.k_base
+            f.attrs["measured_p_c"] = mp.p_c
+            f.attrs["n_steps"] = sp.n_steps
+            f.attrs["n_cells"] = sp.n_cells
+            f.attrs["random_seed"] = sp.random_seed
+            ts = f.create_group("timeseries")
+            ts.create_dataset("times_s", data=times)
+            ts.create_dataset("p_inf_hydrogel",
+                              data=np.array([s.hydrogel_p_inf for s in history]))
+            ts.create_dataset("p_inf_collagen",
+                              data=np.array([s.collagen_p_inf for s in history]))
+            ts.create_dataset("G_prime_Pa", data=G_prime_proxy)
+            ts.create_dataset("ar1",
+                              data=ews_results.get("ar1", np.full_like(times, np.nan)))
+            ts.create_dataset("variance",
+                              data=ews_results.get("variance", np.full_like(times, np.nan)))
+            chi_grp = f.create_group("susceptibility")
+            chi_grp.create_dataset("chi_series", data=chi_array)
+            chi_grp.create_dataset("chi_times_s", data=chi_times_arr)
+            tda_grp = f.create_group("tda")
+            tda_grp.create_dataset("h1_counts", data=h1_counts)
+            tda_grp.create_dataset("h1_times_s", data=tda_times)
+        logger.info("HDF5 archive saved to %s", hdf5_path)
+    except ImportError:
+        logger.warning("h5py not installed — skipping HDF5 export (pip install h5py)")
+    except Exception as exc:
+        logger.warning("HDF5 export failed: %s", exc)
     report = SummaryReporter.generate_report(history, tracker, ews_results)
     report_path = output_dir / "report.txt"
     report_path.write_text(report, encoding="utf-8")
@@ -321,6 +365,69 @@ def run_single(cfg: dict, no_plots: bool = False) -> None:
                     output_dir / "ews_panel.png", dpi=150, bbox_inches="tight"
                 )
                 plt.close(fig_ews)
+
+            # Publication-quality EWS panel with χ(t) row
+            try:
+                from src.publication_figures import plot_ews_panel_publication
+                fig_ews_pub = plot_ews_panel_publication(
+                    times, G_prime_proxy, ar1, var,
+                    h1_counts=h1_counts,
+                    h1_times=tda_times,
+                    t_transition=transition_t,
+                    t_ews_onset=ews_results.get("ews_onset_time"),
+                    chi_series=chi_array if len(chi_array) > 0 else None,
+                    chi_times=chi_times_arr if len(chi_times_arr) > 0 else None,
+                )
+                if fig_ews_pub is not None:
+                    fig_ews_pub.savefig(
+                        output_dir / "ews_panel_publication.png",
+                        dpi=300, bbox_inches="tight",
+                    )
+                    fig_ews_pub.savefig(
+                        output_dir / "ews_panel_publication.pdf",
+                        bbox_inches="tight",
+                    )
+                    plt.close(fig_ews_pub)
+            except Exception as exc_pub:
+                logger.warning("Publication EWS panel failed: %s", exc_pub)
+
+            # Publication-quality critical scaling figure (Fig 1)
+            try:
+                from src.publication_figures import plot_critical_scaling
+                fig_scaling = plot_critical_scaling(mech, mp.p_c)
+                if fig_scaling is not None:
+                    fig_scaling.savefig(
+                        output_dir / "fig1_critical_scaling.png",
+                        dpi=300, bbox_inches="tight",
+                    )
+                    fig_scaling.savefig(
+                        output_dir / "fig1_critical_scaling.pdf",
+                        bbox_inches="tight",
+                    )
+                    plt.close(fig_scaling)
+            except Exception as exc_fig1:
+                logger.warning("Critical scaling figure failed: %s", exc_fig1)
+
+            # Publication-quality percolation dynamics figure (Fig 2)
+            try:
+                from src.publication_figures import plot_percolation_dynamics
+                p_hyd_full = np.array([s.hydrogel_p_inf for s in history])
+                p_col_full = np.array([s.collagen_p_inf for s in history])
+                fig_dyn = plot_percolation_dynamics(
+                    times, p_hyd_full, p_col_full, t_star=t_star
+                )
+                if fig_dyn is not None:
+                    fig_dyn.savefig(
+                        output_dir / "fig2_percolation_dynamics.png",
+                        dpi=300, bbox_inches="tight",
+                    )
+                    fig_dyn.savefig(
+                        output_dir / "fig2_percolation_dynamics.pdf",
+                        bbox_inches="tight",
+                    )
+                    plt.close(fig_dyn)
+            except Exception as exc_fig2:
+                logger.warning("Percolation dynamics figure failed: %s", exc_fig2)
 
             logger.info("Figures saved to %s", output_dir)
         except Exception as exc:

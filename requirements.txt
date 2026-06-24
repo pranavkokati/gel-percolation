@@ -16,6 +16,9 @@ PyYAML>=6.0
 # Progress bars
 tqdm>=4.65.0
 
+# Data serialisation (self-describing HDF5 for Zenodo deposit)
+h5py>=3.8.0
+
 # Topological Data Analysis
 ripser>=0.6.4
 persim>=0.3.3

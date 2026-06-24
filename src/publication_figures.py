@@ -214,6 +214,8 @@ def plot_ews_panel_publication(
     t_transition: float,
     t_h1_peak: Optional[float] = None,
     t_ews_onset: Optional[float] = None,
+    chi_series: Optional[Sequence[float]] = None,
+    chi_times: Optional[Sequence[float]] = None,
     output_path=None,
 ) -> mpl.figure.Figure:
     """Plot the three-panel early warning signal figure.
@@ -242,6 +244,11 @@ def plot_ews_panel_publication(
         Optional time of H₁ peak; marked with a star.
     t_ews_onset:
         Optional EWS onset time; drawn as a vertical dotted line.
+    chi_series:
+        Optional susceptibility χ(t) = Σ s² n_s / N time series.
+        When provided a 4th row is added showing χ(t) divergence.
+    chi_times:
+        Time axis [s] for *chi_series*.
     output_path:
         If given, the figure is saved via :func:`save_figure`.
 
@@ -256,8 +263,17 @@ def plot_ews_panel_publication(
     h1_counts = np.asarray(h1_counts)
     h1_times = np.asarray(h1_times)
 
-    fig, axes = plt.subplots(3, 1, figsize=(7.0, 6.0), sharex=True)
-    ax1, ax2, ax3 = axes
+    _has_chi = chi_series is not None and chi_times is not None
+    n_rows = 4 if _has_chi else 3
+    row_heights = [1.2, 1.2, 1.2, 1.0] if _has_chi else [1.2, 1.2, 1.2]
+    fig, axes = plt.subplots(
+        n_rows, 1,
+        figsize=(7.0, 7.5 if _has_chi else 6.0),
+        sharex=True,
+        gridspec_kw={"height_ratios": row_heights},
+    )
+    ax1, ax2, ax3 = axes[0], axes[1], axes[2]
+    ax4 = axes[3] if _has_chi else None
 
     # ---- Row 1: G'(t) -------------------------------------------------------
     ax1.plot(times, G_prime, color="steelblue", lw=1.5)
@@ -317,8 +333,22 @@ def plot_ews_panel_publication(
 
     ax3.legend(loc="upper right", frameon=False)
 
+    # ---- Row 4 (optional): Susceptibility χ(t) ----------------------------
+    if _has_chi and ax4 is not None:
+        chi_arr = np.asarray(chi_series)
+        chi_t = np.asarray(chi_times)
+        ax4.plot(chi_t, chi_arr, color="saddlebrown", lw=1.5,
+                 label=r"$\chi(t) = \sum s^2 n_s / N$")
+        ax4.axvline(t_transition, color="black", lw=1.0, ls="--")
+        if t_ews_onset is not None:
+            ax4.axvline(t_ews_onset, color="dimgray", lw=1.0, ls=":")
+        ax4.set_ylabel(r"Susceptibility $\chi$")
+        ax4.set_xlabel("Time (s)")
+        ax4.legend(loc="upper left", frameon=False)
+    elif ax3 is not None:
+        ax3.set_xlabel("Time (s)")
+
     # ---- shared annotation: transition line label --------------------------
-    # Place label only on top panel to avoid clutter
     ax1.text(t_transition, ax1.get_ylim()[1] if ax1.get_ylim()[1] != 1.0 else 1,
              r"Gel-sol transition ($t_c$)",
              rotation=90, va="top", ha="right", fontsize=7, color="black",

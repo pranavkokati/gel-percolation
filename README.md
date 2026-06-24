@@ -13,8 +13,8 @@ Enzymatic degradation of wound-healing hydrogels is not a smooth, monotonic proc
 ## Novel Scientific Claims
 
 1. **Inverse percolation is a critical phenomenon**: G'(t) ~ |p(t) − p_c|^f·ω^Δ, with measurable critical exponents from bulk rheology
-2. **Critical slowing down precedes gel–sol transition**: AR1 autocorrelation and variance of G' diverge with a computable lead time of minutes to hours
-3. **H₁ topological persistence peaks before G' variance**: topological loops dissolve before bulk percolation shifts — topology is an *earlier* warning signal
+2. **Critical slowing down precedes gel–sol transition**: AR1 autocorrelation of G'(t) rises monotonically before failure (Kendall τ > +0.48, p < 10⁻⁴⁰, confirmed computationally). The percolation susceptibility χ(t) = Σ s² n_s / N diverges as χ ~ |p − p_c|^{−γ} (γ = 1.8), providing a theoretically grounded second EWS; G'(t) variance is predicted to be detectable in *experimental* data with thermal noise but is absent in deterministic simulations.
+3. **H₁ topological persistence peaks before AR1 onset**: topological loops dissolve before bulk percolation shifts — topology is an *earlier* warning signal than classical EWS; full comparison requires 50 µm box to suppress finite-size effects (ξ exceeds box near p_c in 20 µm box)
 4. **Stiffness gradient diverges at p_c**: optimal fibroblast seeding time is precisely the percolation edge, not the intact or failed scaffold
 5. **The percolation handoff metric Q is a design target**: Q = dP∞_col/dt − dP∞_hyd/dt at t* predicts wound healing success/failure from first principles
 

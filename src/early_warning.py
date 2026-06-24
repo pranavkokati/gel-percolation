@@ -207,21 +207,9 @@ class EarlyWarningSignalDetector:
         ar1 = self.compute_ar1(G_prime_timeseries)
         var = self.compute_variance(G_prime_timeseries)
 
-        # Kendall's tau trend test — monotonically increasing EWS is the signal
-        valid_ar1 = ~np.isnan(ar1)
-        if valid_ar1.sum() >= 4:
-            tau_ar1, p_ar1 = stats.kendalltau(times[valid_ar1], ar1[valid_ar1])
-        else:
-            tau_ar1, p_ar1 = np.nan, np.nan
-
-        valid_var = ~np.isnan(var)
-        if valid_var.sum() >= 4:
-            tau_var, p_var = stats.kendalltau(times[valid_var], var[valid_var])
-        else:
-            tau_var, p_var = np.nan, np.nan
-
-        # Estimate gel-sol transition: first time G' drops below 1 % of its
-        # early-time maximum (proxy for p crossing p_c).
+        # Estimate gel-sol transition first so Kendall τ can be restricted to
+        # the pre-transition window.  Including the post-transition flat region
+        # (where G'→0 and AR1/var → NaN) dilutes τ toward zero.
         n_early = max(10, self.window_size)
         g_peak = np.nanmax(G_prime_timeseries[:n_early])
         threshold_gp = 0.01 * g_peak
@@ -232,6 +220,20 @@ class EarlyWarningSignalDetector:
         else:
             transition_idx = len(times) - 1
             transition_time = float(times[-1])
+        pre_mask = np.arange(len(G_prime_timeseries)) < transition_idx
+
+        # Kendall's tau trend test restricted to pre-transition window.
+        valid_ar1 = ~np.isnan(ar1) & pre_mask
+        if valid_ar1.sum() >= 4:
+            tau_ar1, p_ar1 = stats.kendalltau(times[valid_ar1], ar1[valid_ar1])
+        else:
+            tau_ar1, p_ar1 = np.nan, np.nan
+
+        valid_var = ~np.isnan(var) & pre_mask
+        if valid_var.sum() >= 4:
+            tau_var, p_var = stats.kendalltau(times[valid_var], var[valid_var])
+        else:
+            tau_var, p_var = np.nan, np.nan
 
         # EWS onset index and time
         ews_idx = self.detect_transition_time(ar1, threshold_sigma=2.0)
@@ -268,6 +270,7 @@ class EarlyWarningSignalDetector:
             "var_pvalue": p_var_val,
             "ews_onset_time": ews_onset_time,
             "transition_time": transition_time,
+            "transition_idx": int(transition_idx),
             "lead_time": lead_time,
             "ar1_significant": ar1_significant,
             "var_significant": var_significant,

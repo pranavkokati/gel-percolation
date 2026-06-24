@@ -5,7 +5,7 @@ hydrogel:
   box_size: 50.0             # um, simulation box side length
   rho_x: 1.0                 # um^-3, crosslink junction density (synthesis-controlled)
   r_c: 1.0                   # um, chain cutoff radius — z≈4 per node, p_c≈0.33 for RGG (was 5.0 → z≈524, p_c≈0.0026, unphysical)
-  k_base: 0.0012              # s^-1 nM^-1; with p_c≈0.547, transition at step ~500, giving ≥500 pre-transition EWS steps
+  k_base: 0.001               # s^-1 nM^-1; with p_c≈0.547, transition at step ~470, giving ≥470 pre-transition EWS steps
   tau_ionic: 3600.0          # s, ionic bond reference lifetime at body temperature
   E_activation: 50000.0      # J/mol, Arrhenius activation energy for ionic bond rupture
   bond_type: alginate         # 'alginate' (ionic + covalent) or 'peg' (purely covalent)

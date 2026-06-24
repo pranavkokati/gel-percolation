@@ -658,12 +658,13 @@ class TopologicalDataAnalyzer:
         max_lt = np.zeros(n, dtype=float)
         entropy = np.zeros(n, dtype=float)
 
+        lt_thr = getattr(self, "lifetime_threshold", 0.5)
         for i, (pos, edges) in enumerate(network_snapshots):
             try:
                 dgm = self.compute_persistence_diagram(
                     np.asarray(pos, dtype=float), list(edges)
                 )
-                s = self.compute_h1_statistics(dgm)
+                s = self.compute_h1_statistics(dgm, lifetime_threshold=lt_thr)
                 n_long[i] = s["n_long_lived_h1"]
                 mean_lt[i] = s["mean_h1_lifetime"]
                 max_lt[i] = s["max_h1_lifetime"]

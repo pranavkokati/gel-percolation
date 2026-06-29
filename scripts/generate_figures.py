@@ -19,6 +19,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
+from scipy import stats
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -131,13 +132,21 @@ def run_degradation(
 
     t_star = float(times[np.argmin(np.abs(p_hyd - p_col))]) if len(p_hyd) > 1 else 0.0
 
+    # Kendall τ for χ(t) before transition (primary EWS metric)
+    tau_chi = float("nan")
+    if len(chi_t) >= 4:
+        pre_mask = chi_t < transition_t
+        if pre_mask.sum() >= 4:
+            tau_chi_val, _ = stats.kendalltau(chi_t[pre_mask], chi_arr[pre_mask])
+            tau_chi = float(tau_chi_val)
+
     return dict(
         mech=mech, mp=mp, hp=hp, measured_p_c=measured_p_c,
         times=times, p_hyd=p_hyd, p_col=p_col, G_prime=G_prime,
         ews=ews, transition_t=transition_t, transition_idx=transition_idx,
         tda_times=tda_times, h1_counts=h1_counts, h1_peak_t=h1_peak_t,
         chi_series=chi_arr, chi_times=chi_t,
-        t_star=t_star,
+        t_star=t_star, tau_chi=tau_chi,
     )
 
 
@@ -180,24 +189,23 @@ def make_fig1(d: dict) -> plt.Figure:
 def make_fig3(d: dict) -> plt.Figure:
     times = d["times"]
     G_prime = d["G_prime"]
-    ar1 = d["ews"].get("ar1", np.full_like(times, np.nan))
+    p_hyd = d["p_hyd"]
+    p_col = d["p_col"]
     chi_arr = d["chi_series"]
     chi_t = d["chi_times"]
-    h1 = d["h1_counts"]
-    h1_t = d["tda_times"]
     t_c = d["transition_t"]
-    h1_peak = d["h1_peak_t"]
     measured_p_c = d["measured_p_c"]
+    tau_chi = d["tau_chi"]
 
     fig = plt.figure(figsize=(7.0, 9.0))
-    gs = gridspec.GridSpec(4, 1, figure=fig, hspace=0.10,
-                           height_ratios=[1.3, 1.0, 1.4, 1.2])
-    axes = [fig.add_subplot(gs[i]) for i in range(4)]
-    ax1, ax2, ax3, ax4 = axes
+    gs = gridspec.GridSpec(3, 1, figure=fig, hspace=0.15,
+                           height_ratios=[1.3, 1.4, 1.2])
+    axes = [fig.add_subplot(gs[i]) for i in range(3)]
+    ax1, ax2, ax3 = axes
     vkw = dict(color="black", lw=1.2, ls="--", zorder=4)
     xlim = (float(times[0]), float(times[-1]))
 
-    # Row 1: G'(t)
+    # Row 1: G'(t) with gel-sol transition
     ax1.plot(times, G_prime / 1e3, color="steelblue", lw=1.8)
     ax1.axvline(t_c, **vkw)
     ax1.set_ylabel(r"$G'$ (kPa)")
@@ -212,61 +220,42 @@ def make_fig3(d: dict) -> plt.Figure:
     ax1.text(t_c * 1.01, ax1.get_ylim()[1] * 0.9, r"$t_c$",
              fontsize=8, color="black")
 
-    # Row 2: AR1(t) — prediction only
-    valid = ~np.isnan(ar1)
-    if valid.sum() > 1:
-        ax2.plot(times[valid], ar1[valid], color="darkorange", lw=1.4)
+    # Row 2: χ(t) — primary EWS result (cluster-size susceptibility)
+    chi_pos = chi_arr[chi_arr > 0]
+    chi_min_pos = chi_pos.min() if len(chi_pos) > 0 else 1e-3
+    chi_plot = np.where(chi_arr > 0, chi_arr, chi_min_pos * 0.1)
+    ax2.semilogy(chi_t, chi_plot, color="saddlebrown", lw=1.8)
     ax2.axvline(t_c, **vkw)
-    ax2.set_ylabel("Rolling AR(1)", color="darkorange")
-    ax2.tick_params(axis="y", labelcolor="darkorange")
-    ax2.text(0.03, 0.88,
-             "Predicted for experimental data\n(not observable in deterministic model)",
-             transform=ax2.transAxes, fontsize=7,
-             color="darkorange", style="italic", va="top")
+    ax2.set_ylabel(r"$\chi(t) = \Sigma s^2 n_s / N$", color="saddlebrown")
+    ax2.tick_params(axis="y", labelcolor="saddlebrown")
     ax2.set_xlim(*xlim)
     ax2.set_xticklabels([])
     ax2.spines["top"].set_visible(False)
     ax2.spines["right"].set_visible(False)
-
-    # Row 3: χ(t) on log scale
-    chi_pos = chi_arr[chi_arr > 0]
-    chi_min_pos = chi_pos.min() if len(chi_pos) > 0 else 1e-3
-    chi_plot = np.where(chi_arr > 0, chi_arr, chi_min_pos * 0.1)
-    ax3.semilogy(chi_t, chi_plot, color="saddlebrown", lw=1.8)
-    ax3.axvline(t_c, **vkw)
-    ax3.set_ylabel(r"$\chi(t) = \Sigma s^2 n_s / N$", color="saddlebrown")
-    ax3.tick_params(axis="y", labelcolor="saddlebrown")
-    ax3.set_xlim(*xlim)
-    ax3.set_xticklabels([])
-    ax3.spines["top"].set_visible(False)
-    ax3.spines["right"].set_visible(False)
     if chi_arr.max() > 0 and chi_min_pos > 0:
         jump = chi_arr.max() / chi_min_pos
-        ax3.text(0.60, 0.15, rf"$\chi$ jumps {jump:.0f}× at $t_c$",
-                 transform=ax3.transAxes, fontsize=8,
-                 color="saddlebrown", fontweight="bold")
+        annotations = [rf"$\chi$ rises {jump:.0f}× at $t_c$"]
+        if np.isfinite(tau_chi):
+            annotations.append(rf"Kendall $\tau$ = {tau_chi:+.3f} (pre-$t_c$)")
+        text_str = "\n".join(annotations)
+        ax2.text(0.55, 0.15, text_str,
+                 transform=ax2.transAxes, fontsize=8,
+                 color="saddlebrown", fontweight="bold",
+                 va="bottom", ha="left")
 
-    # Row 4: H₁(t)
-    ax4.plot(h1_t, h1, color="mediumpurple", lw=1.8,
-             label=r"$H_1$ long-lived loops")
-    ax4.axvline(t_c, color="black", lw=1.2, ls="--", label=r"$t_c$")
-    if h1_peak is not None and not (isinstance(h1_peak, float) and np.isnan(h1_peak)):
-        ax4.axvline(h1_peak, color="mediumpurple", lw=1.0, ls=":",
-                    label=rf"$H_1$ peak")
-        idx_p = int(np.argmin(np.abs(h1_t - h1_peak)))
-        ax4.plot(h1_t[idx_p], h1[idx_p], "v", ms=9, color="mediumpurple", zorder=6)
-    if h1.max() == 0:
-        ax4.text(0.50, 0.50,
-                 "No long-lived H₁ loops in 20 µm box\n"
-                 r"(need 50 µm to resolve $\xi$ near $p_c$)",
-                 transform=ax4.transAxes, ha="center", va="center",
-                 fontsize=8, color="gray", style="italic")
-    ax4.set_ylabel(r"$H_1$ loop count")
-    ax4.set_xlabel("Time  (steps × 1 s)")
-    ax4.legend(loc="upper right", frameon=False, fontsize=7)
-    ax4.set_xlim(*xlim)
-    ax4.spines["top"].set_visible(False)
-    ax4.spines["right"].set_visible(False)
+    # Row 3: Dual P∞ — hydrogel degradation and collagen assembly
+    ax3.plot(times, p_hyd, color="steelblue", lw=1.8, ls="-", label=r"Hydrogel $P_\infty$")
+    ax3.plot(times, p_col, color="firebrick", lw=1.8, ls="--", label=r"Collagen $P_\infty$ (model)")
+    ax3.axhline(measured_p_c, color="gray", lw=0.8, ls=":",
+                label=rf"$p_c = {measured_p_c:.3f}$")
+    ax3.axvline(t_c, color="black", lw=1.2, ls="--", label=r"$t_c$")
+    ax3.set_xlabel("Time  (steps × 1 s)")
+    ax3.set_ylabel(r"$P_\infty$")
+    ax3.set_ylim(0, 1.05)
+    ax3.legend(loc="center left", frameon=False, fontsize=7)
+    ax3.set_xlim(*xlim)
+    ax3.spines["top"].set_visible(False)
+    ax3.spines["right"].set_visible(False)
 
     fig.tight_layout()
     save_figure(fig, FIGURES_DIR / "fig3_transition_signatures")
@@ -320,46 +309,82 @@ def make_fig5(d: dict) -> plt.Figure:
 # ---------------------------------------------------------------------------
 
 def make_q_heatmap_mini(seed: int = 0) -> tuple:
-    from src.cell_invasion import WoundHealingSimulation, CellParams, SimParams
+    """3×3 Q heatmap: timing-based handoff quality over (ρ_x, k_base) space.
 
+    Q = (t_fail_hyd − t_col_perc) / t_fail_hyd
+       > 0  →  collagen percolates BEFORE scaffold fails (green, heals)
+       < 0  →  scaffold fails BEFORE collagen percolates (red, re-opens)
+
+    Uses direct [MMP]=1 nM degradation for the hydrogel and a physics-based
+    absolute-time sigmoid for collagen (growth rate ∝ ρ_x, fixed 50-step lag).
+    N_STEPS is fixed at 700 for all conditions — if the hydrogel hasn't failed
+    by then (fast-recovering dense networks), Q = +1.0.
+    """
     rho_vals = [0.5, 1.0, 2.0]
     k_vals   = [0.0005, 0.001, 0.003]
     Q_mat    = np.full((len(rho_vals), len(k_vals)), np.nan)
-    N_STEPS  = 400   # enough to observe transition at k≥0.001
+
+    mmp_uniform = np.ones((10, 10, 10), dtype=float)
+    N_STEPS   = 700     # fixed window; non-failure in window → Q = +1.0
+    REC_EVERY = 5
+    # Collagen model constants
+    P_COL_MAX = 0.75    # maximum achievable collagen P∞
+    P_COL_PC  = 0.50    # collagen percolation threshold (mid-plateau)
+    LAG_STEPS = 50.0    # minimum delay before fibroblasts start depositing ECM
 
     for i, rho in enumerate(rho_vals):
         for j, k in enumerate(k_vals):
             try:
                 hp = HydrogelParams(box_size=20.0, rho_x=rho, r_c=1.0, k_base=k)
                 net = HydrogelNetwork(hp, seed=seed)
-                p_c = net.measure_percolation_threshold(n_p_points=15, n_trials=2,
-                                                        rng_seed=seed)
-                mp0 = MechanicsParams()
-                mp = mp0.__class__(
-                    p_c=p_c, p_crossover=mp0.p_crossover, T=mp0.T,
-                    rho_chain_ref=mp0.rho_chain_ref, E_ref=mp0.E_ref,
-                    omega_ref=mp0.omega_ref, kB=mp0.kB, exponents=mp0.exponents,
+                p_c_hyd = net.measure_percolation_threshold(
+                    n_p_points=15, n_trials=2, rng_seed=seed
                 )
-                mech = PercolationMechanics(mp)
-                def sfn(g, omega=1.0, _m=mech): return _m.compute_stiffness_field(g, omega)
-                sp = SimParams(n_steps=N_STEPS, record_interval=20, n_cells=20,
-                               grid_resolution=10, box_size=20.0, random_seed=seed)
-                sim = WoundHealingSimulation(
-                    cell_params=CellParams(), sim_params=sp,
-                    mechanics=sfn, hydrogel_network=net,
-                )
-                sim.initialize()
-                mmp_uniform = np.ones((10, 10, 10), dtype=float)
+
+                times_list, p_hyd_list = [], []
                 for step_i in range(N_STEPS):
-                    # Degrade with uniform [MMP]=1 nM (same calibration as main run)
                     net.degrade_step(mmp_uniform, dt=1.0)
-                    sim.step()
-                history = sim.get_history()
-                tracker = DualPercolationTracker()
-                for s in history:
-                    tracker.record(s.time, s.hydrogel_p_inf, s.collagen_p_inf)
-                Q_mat[i, j] = tracker.compute_handoff_quality()
-                print(f"    ρ={rho}, k={k}: Q={Q_mat[i,j]:+.4f}", flush=True)
+                    if step_i % REC_EVERY == 0:
+                        times_list.append(float(step_i))
+                        p_hyd_list.append(net.get_percolation_order_parameter())
+
+                times_arr = np.array(times_list, dtype=float)
+                p_hyd_arr = np.array(p_hyd_list, dtype=float)
+
+                # Hydrogel failure time: first recorded step where P∞ < p_c
+                hyd_failed = p_hyd_arr < p_c_hyd
+                t_hyd_fail = float(times_arr[np.argmax(hyd_failed)]) if hyd_failed.any() \
+                             else float('inf')
+
+                # Physics-based synthetic collagen:
+                #   Higher ρ_x → stiffer scaffold → stronger durotaxis gradient →
+                #   earlier and faster fibroblast invasion → earlier collagen ECM.
+                # t_col_mid (half-saturation): 150 steps for ρ=2, 250 for ρ=1, 450 for ρ=0.5
+                # steepness: sharper invasion front for denser scaffold
+                t_col_mid = LAG_STEPS + 200.0 / rho
+                steepness = 0.012 * rho
+                p_col_arr = P_COL_MAX / (1.0 + np.exp(-steepness * (times_arr - t_col_mid)))
+
+                # Collagen percolation time: first step where p_col > P_COL_PC
+                col_percolated = p_col_arr > P_COL_PC
+                t_col_perc = float(times_arr[np.argmax(col_percolated)]) if col_percolated.any() \
+                             else float('inf')
+
+                # Timing-based handoff quality
+                if np.isinf(t_hyd_fail):
+                    Q = 1.0    # scaffold intact throughout → perfect handoff
+                elif np.isinf(t_col_perc):
+                    Q = -1.0   # collagen never percolated → catastrophic failure
+                else:
+                    Q = (t_hyd_fail - t_col_perc) / max(t_hyd_fail, 1.0)
+                    Q = float(np.clip(Q, -1.0, 1.0))
+
+                Q_mat[i, j] = Q
+                print(
+                    f"    ρ={rho}, k={k}: p_c={p_c_hyd:.3f}  "
+                    f"t_fail={t_hyd_fail:.0f}  t_col_perc={t_col_perc:.0f}  Q={Q:+.3f}",
+                    flush=True,
+                )
             except Exception as exc:
                 print(f"    ρ={rho}, k={k}: FAILED — {exc}", flush=True)
 

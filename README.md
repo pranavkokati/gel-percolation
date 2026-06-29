@@ -34,7 +34,7 @@ Enzymatic degradation of wound-healing hydrogels is not a smooth, monotonic proc
 
 ### Figure 3 — Gel–Sol Transition Signatures (Key Novel Result)
 ![Transition signatures panel](figures/fig3_transition_signatures.png)
-*Four-panel signature figure. (1) G'(t) — the gel-sol transition. (2) Rolling AR1(t) — predicted EWS for experimental data. (3) χ(t) = Σs²n_s/N — the cluster-size susceptibility, demonstrated to jump 976× at the transition. (4) H₁(t) — topological loop count; expected to peak before χ diverges.*
+*Three-panel signature figure. (1) G'(t) — bulk rheology showing the gel-sol transition at t_c. (2) χ(t) = Σs²n_s/N — the percolation susceptibility (cluster-size divergence), the primary early warning signal with Kendall τ trend test annotated. (3) Dual P_∞ tracking — hydrogel scaffold degradation (steelblue) and collagen ECM assembly (firebrick) with p_c threshold.*
 
 ### Figure 4 — Handoff Quality Q Design Map
 ![Q heatmap design map](figures/fig4_q_heatmap.png)

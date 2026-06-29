@@ -387,35 +387,42 @@ def plot_q_heatmap_publication(
     -------
     matplotlib.figure.Figure
     """
-    Q_matrix = np.asarray(Q_matrix)
-    rho_x_values = np.asarray(rho_x_values)
-    k_base_values = np.asarray(k_base_values)
+    Q_matrix = np.asarray(Q_matrix, dtype=float)
+    rho_x_values = np.asarray(rho_x_values, dtype=float)
+    k_base_values = np.asarray(k_base_values, dtype=float)
 
-    # symmetric colormap limits centred on zero
-    q_abs_max = np.nanmax(np.abs(Q_matrix))
-    vmin, vmax = -q_abs_max, q_abs_max
+    # Fixed symmetric colormap centred on zero: Q ∈ [-1, +1]
+    vmin, vmax = -1.0, 1.0
 
-    fig, ax = plt.subplots(figsize=(7.0, 4.0))
+    fig, ax = plt.subplots(figsize=(7.0, 4.2))
 
     im = ax.pcolormesh(
         k_base_values, rho_x_values, Q_matrix,
         cmap="RdYlGn", vmin=vmin, vmax=vmax, shading="auto",
     )
 
-    # Q = 0 contour — "scaffold failure boundary"
-    cs = ax.contour(k_base_values, rho_x_values, Q_matrix,
-                    levels=[0.0], colors="black", linewidths=1.2)
-    ax.clabel(cs, fmt={0.0: "Scaffold failure boundary"}, fontsize=7,
-              inline=True, inline_spacing=4)
+    # Q = 0 contour — scaffold failure boundary
+    has_neg = np.any(Q_matrix < 0)
+    has_pos = np.any(Q_matrix > 0)
+    if has_neg and has_pos:
+        cs = ax.contour(k_base_values, rho_x_values, Q_matrix,
+                        levels=[0.0], colors="black", linewidths=1.5)
+        ax.clabel(cs, fmt={0.0: "Q = 0 (failure boundary)"}, fontsize=7,
+                  inline=True, inline_spacing=4)
 
     cbar = fig.colorbar(im, ax=ax, pad=0.02)
     cbar.set_label(
-        r"$Q = \dot{P}_{\infty,\mathrm{col}} - \dot{P}_{\infty,\mathrm{hyd}}$",
+        r"$Q = (t_\mathrm{fail} - t_\mathrm{col\,perc}) \,/\, t_\mathrm{fail}$",
         fontsize=8,
     )
+    cbar.ax.text(0.5, 1.06, "Scaffold fails first →", transform=cbar.ax.transAxes,
+                 ha="center", va="bottom", fontsize=6.5, color="red")
+    cbar.ax.text(0.5, -0.08, "← Collagen percolates first", transform=cbar.ax.transAxes,
+                 ha="center", va="top", fontsize=6.5, color="darkgreen")
 
     ax.set_xlabel(r"$k_\mathrm{base}$ (s$^{-1}$ nM$^{-1}$)")
     ax.set_ylabel(r"$\rho_x$ (µm$^{-3}$)")
+    ax.set_title("Handoff Quality Q: Formulation Design Map", fontsize=10)
 
     fig.tight_layout()
     save_figure(fig, output_path)

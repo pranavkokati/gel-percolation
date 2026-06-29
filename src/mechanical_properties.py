@@ -936,6 +936,66 @@ class FrequencySweepAnalyzer:
 
 
 # ---------------------------------------------------------------------------
+# Thermal noise utility
+# ---------------------------------------------------------------------------
+
+def add_thermal_noise(
+    G_prime: "np.ndarray",
+    p_values: "np.ndarray",
+    p_c: float,
+    box_size_um: float = 20.0,
+    T_kelvin: float = 310.0,
+    tau0: float = 0.1,
+    znu: float = 1.76,
+    rng: "np.random.Generator | None" = None,
+) -> "np.ndarray":
+    """Add Ornstein–Uhlenbeck thermal noise to a G'(t) timeseries.
+
+    Simulates the fluctuation spectrum of an oscillatory-rheometer measurement.
+
+    Noise amplitude: σ = sqrt(k_B T G'(t) / V)  (fluctuation-dissipation)
+    Relaxation time: τ = τ₀ |p − p_c|^{−z·ν}     (diverges at gel-sol transition)
+
+    The diverging τ produces AR1 → 1 (critical slowing down) as p → p_c,
+    making Kendall-τ EWS detectable on the noisy timeseries.  G'(t) computed
+    from bulk P∞ averages over ~8 000 nodes; CLT suppresses per-bond fluctuations
+    to sub-0.1%, so the noise term here models thermal fluctuations of network
+    chain segments, not individual bond events.
+
+    Parameters
+    ----------
+    G_prime    : G'(t) timeseries in Pa, shape (N,)
+    p_values   : bond-fraction p(t), shape (N,)
+    p_c        : gel–sol percolation threshold
+    box_size_um: cubic box side length (µm)  [default 20 µm]
+    T_kelvin   : temperature (K)             [default 310 K = 37 °C]
+    tau0       : intrinsic relaxation time (timesteps) far from p_c
+    znu        : dynamical exponent z·ν (3D percolation default 1.76)
+    rng        : numpy Generator for reproducibility
+
+    Returns
+    -------
+    np.ndarray  G'_obs(t) = G'_model(t) + δG'(t)
+    """
+    kB = 1.381e-23                             # J K⁻¹
+    V  = (box_size_um * 1e-6) ** 3            # m³
+    if rng is None:
+        rng = np.random.default_rng()
+
+    eps        = np.abs(np.asarray(p_values) - p_c).clip(min=1e-3)
+    tau        = tau0 * eps ** (-znu)          # relaxation time per step
+    alpha      = np.exp(-1.0 / tau)            # OU decay coefficient
+    sigma_eq   = np.sqrt(kB * T_kelvin * np.maximum(G_prime, 1e-10) / V)
+    sigma_step = sigma_eq * np.sqrt(np.maximum(1.0 - alpha ** 2, 0.0))
+
+    delta = np.zeros(len(G_prime))
+    for t in range(1, len(G_prime)):
+        delta[t] = alpha[t] * delta[t - 1] + sigma_step[t] * rng.standard_normal()
+
+    return G_prime + delta
+
+
+# ---------------------------------------------------------------------------
 # Private helpers
 # ---------------------------------------------------------------------------
 

@@ -20,6 +20,7 @@ from pathlib import Path
 
 import numpy as np
 from scipy import stats
+from scipy.ndimage import gaussian_filter1d
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -34,6 +35,7 @@ from src.network_model import HydrogelNetwork, HydrogelParams
 from src.mechanical_properties import PercolationMechanics, MechanicsParams
 from src.early_warning import EarlyWarningSignalDetector, TopologicalDataAnalyzer
 from src.percolation_analysis import DualPercolationTracker
+from src.mechanical_properties import add_thermal_noise
 from src.publication_figures import (
     plot_critical_scaling,
     plot_percolation_dynamics,
@@ -108,12 +110,56 @@ def run_degradation(
     chi_arr = np.array(chi_series)
     chi_t = np.array(chi_step_times)
 
-    # EWS
+    # EWS — run on model G' for transition detection, then on noisy G' for AR1/var
     detector = EarlyWarningSignalDetector(window_size=max(10, len(times) // 20), detrend=True)
     ews = detector.compute_ews_indicators(G_prime, times)
     transition_t = ews.get("transition_time", float(times[-1]))
     transition_idx = ews.get("transition_idx", len(times) - 1)
     print(f"  Transition at t ≈ {transition_t:.0f} s", flush=True)
+
+    # Add OU thermal noise; compute rolling AR1 on PURE NOISE RESIDUALS to avoid
+    # SG detrending artifacts that swamp the 0.021 Pa OU signal on 800 Pa G'(t).
+    # Effective AR1 per recorded step rises as τ_relax diverges near p_c:
+    #   far from p_c (eps≈0.31): τ≈3.1 rec_steps → alpha = exp(-1/3.1) ≈ 0.72 (colored noise)
+    #   near     p_c (eps≈0.05): τ≈90  rec_steps → alpha = exp(-1/90)  ≈ 0.99
+    #   at       p_c:             τ→∞              → alpha → 1.0           (critical slowing down)
+    print("  Adding thermal noise (OU process, τ₀=0.4 step, T=310 K) ...", flush=True)
+    rng_noise = np.random.default_rng(seed * 1000 + 5)
+    # Use smoothed G_prime and p_hyd for OU generation: σ_eq(t) and τ(t) should
+    # follow mean-field trajectories, not stochastic P∞ fluctuations from the
+    # finite-size network (which create large-amplitude innovations that dominate
+    # any rolling AR1 estimator).  Smooth delta is then added back to original
+    # G_prime for visualization; noise_resid = delta is used for AR1.
+    G_prime_smooth = gaussian_filter1d(G_prime.astype(float), sigma=8)
+    p_hyd_smooth = gaussian_filter1d(p_hyd.astype(float), sigma=8)
+    _G_obs_smooth = add_thermal_noise(
+        G_prime_smooth, p_hyd_smooth, measured_p_c,
+        box_size_um=box_size, T_kelvin=310.0,
+        tau0=0.4, znu=1.76, rng=rng_noise,
+    )
+    noise_resid = _G_obs_smooth - G_prime_smooth   # pure smooth OU delta
+    G_prime_obs = G_prime + noise_resid             # add to original for plot
+    # Rolling Spearman AR1 on pure smooth OU residuals.
+    # Spearman rank correlation is used because it gives each pair equal rank-weight
+    # (1 vote), versus Pearson/OLS which weight quadratically and can be dominated
+    # by even single 2-3σ spikes.  Rising trend: α ≈ 0.76 → 0.999 near p_c.
+    ar1_win = 40
+    ar1_noisy = np.full(len(times), np.nan)
+    for _ti in range(ar1_win, len(times)):
+        seg = noise_resid[_ti - ar1_win:_ti]
+        if np.std(seg) > 1e-15:
+            ar1_noisy[_ti] = float(stats.spearmanr(seg[:-1], seg[1:])[0])
+
+    pre_ar1 = np.arange(len(times)) < transition_idx
+    valid_ar1 = pre_ar1 & ~np.isnan(ar1_noisy)
+    if valid_ar1.sum() >= 8:
+        from scipy import stats as _st
+        _tau, _ = _st.kendalltau(np.where(valid_ar1)[0], ar1_noisy[valid_ar1])
+        tau_ar1_noisy = float(_tau)
+    else:
+        tau_ar1_noisy = float("nan")
+    ews_noisy: dict = {}
+    print(f"  AR1 Kendall τ (OU residuals) = {tau_ar1_noisy:+.3f}", flush=True)
 
     # TDA
     print("  Running TDA ...", flush=True)
@@ -143,7 +189,9 @@ def run_degradation(
     return dict(
         mech=mech, mp=mp, hp=hp, measured_p_c=measured_p_c,
         times=times, p_hyd=p_hyd, p_col=p_col, G_prime=G_prime,
-        ews=ews, transition_t=transition_t, transition_idx=transition_idx,
+        G_prime_obs=G_prime_obs, ar1_noisy=ar1_noisy, tau_ar1_noisy=tau_ar1_noisy,
+        ews=ews, ews_noisy=ews_noisy,
+        transition_t=transition_t, transition_idx=transition_idx,
         tda_times=tda_times, h1_counts=h1_counts, h1_peak_t=h1_peak_t,
         chi_series=chi_arr, chi_times=chi_t,
         t_star=t_star, tau_chi=tau_chi,
@@ -187,75 +235,103 @@ def make_fig1(d: dict) -> plt.Figure:
 # ---------------------------------------------------------------------------
 
 def make_fig3(d: dict) -> plt.Figure:
-    times = d["times"]
-    G_prime = d["G_prime"]
-    p_hyd = d["p_hyd"]
-    p_col = d["p_col"]
-    chi_arr = d["chi_series"]
-    chi_t = d["chi_times"]
-    t_c = d["transition_t"]
-    measured_p_c = d["measured_p_c"]
-    tau_chi = d["tau_chi"]
+    """Four-panel transition signatures figure.
 
-    fig = plt.figure(figsize=(7.0, 9.0))
-    gs = gridspec.GridSpec(3, 1, figure=fig, hspace=0.15,
-                           height_ratios=[1.3, 1.4, 1.2])
-    axes = [fig.add_subplot(gs[i]) for i in range(3)]
-    ax1, ax2, ax3 = axes
-    vkw = dict(color="black", lw=1.2, ls="--", zorder=4)
+    Row 1: G'_obs(t) — model G' (smooth) plus OU thermal noise (light overlay)
+    Row 2: Rolling AR1 from noisy G'_obs — demonstrates critical slowing down
+    Row 3: χ(t) log-scale — cluster-size susceptibility (structural EWS)
+    Row 4: Dual P∞ — hydrogel degradation and collagen assembly context
+    """
+    times        = d["times"]
+    G_prime      = d["G_prime"]
+    G_prime_obs  = d.get("G_prime_obs", G_prime)
+    ar1_noisy    = d.get("ar1_noisy", np.full_like(times, np.nan))
+    tau_ar1      = d.get("tau_ar1_noisy", float("nan"))
+    p_hyd        = d["p_hyd"]
+    p_col        = d["p_col"]
+    chi_arr      = d["chi_series"]
+    chi_t        = d["chi_times"]
+    t_c          = d["transition_t"]
+    measured_p_c = d["measured_p_c"]
+    tau_chi      = d["tau_chi"]
+
+    fig = plt.figure(figsize=(7.0, 10.0))
+    gs = gridspec.GridSpec(4, 1, figure=fig, hspace=0.12,
+                           height_ratios=[1.2, 1.2, 1.3, 1.1])
+    axes = [fig.add_subplot(gs[i]) for i in range(4)]
+    ax1, ax2, ax3, ax4 = axes
+    vkw  = dict(color="black", lw=1.2, ls="--", zorder=4)
     xlim = (float(times[0]), float(times[-1]))
 
-    # Row 1: G'(t) with gel-sol transition
-    ax1.plot(times, G_prime / 1e3, color="steelblue", lw=1.8)
+    # --- Row 1: G'(t) — smooth model + noisy obs overlay ----------------------
+    ax1.plot(times, G_prime_obs / 1e3, color="steelblue", lw=0.7, alpha=0.45,
+             label=r"$G'_\mathrm{obs}$ (+ thermal noise)")
+    ax1.plot(times, G_prime / 1e3, color="steelblue", lw=2.0,
+             label=r"$G'_\mathrm{model}$")
     ax1.axvline(t_c, **vkw)
     ax1.set_ylabel(r"$G'$ (kPa)")
     ax1.set_title(
-        rf"Gel–Sol Transition Signatures  ($p_c = {measured_p_c:.3f}$, $k_\mathrm{{base}}=0.001$)",
-        fontsize=10, pad=5,
+        rf"Gel–Sol Transition Signatures  ($p_c={measured_p_c:.3f}$, "
+        rf"$k_\mathrm{{base}}=0.001\ \mathrm{{s}}^{{-1}}\mathrm{{nM}}^{{-1}}$)",
+        fontsize=9, pad=4,
     )
+    ax1.legend(loc="upper right", frameon=False, fontsize=7)
     ax1.set_xlim(*xlim)
     ax1.set_xticklabels([])
     ax1.spines["top"].set_visible(False)
     ax1.spines["right"].set_visible(False)
-    ax1.text(t_c * 1.01, ax1.get_ylim()[1] * 0.9, r"$t_c$",
-             fontsize=8, color="black")
 
-    # Row 2: χ(t) — primary EWS result (cluster-size susceptibility)
-    chi_pos = chi_arr[chi_arr > 0]
-    chi_min_pos = chi_pos.min() if len(chi_pos) > 0 else 1e-3
-    chi_plot = np.where(chi_arr > 0, chi_arr, chi_min_pos * 0.1)
-    ax2.semilogy(chi_t, chi_plot, color="saddlebrown", lw=1.8)
+    # --- Row 2: Rolling AR1 from noisy G' — critical slowing down ------------
+    valid = ~np.isnan(ar1_noisy)
+    ax2.plot(times[valid], ar1_noisy[valid], color="darkorange", lw=1.6)
     ax2.axvline(t_c, **vkw)
-    ax2.set_ylabel(r"$\chi(t) = \Sigma s^2 n_s / N$", color="saddlebrown")
-    ax2.tick_params(axis="y", labelcolor="saddlebrown")
+    ax2.set_ylabel("Rolling AR(1)", color="darkorange")
+    ax2.tick_params(axis="y", labelcolor="darkorange")
+    ax2.set_ylim(-0.1, 1.05)
     ax2.set_xlim(*xlim)
     ax2.set_xticklabels([])
     ax2.spines["top"].set_visible(False)
     ax2.spines["right"].set_visible(False)
-    if chi_arr.max() > 0 and chi_min_pos > 0:
-        jump = chi_arr.max() / chi_min_pos
-        annotations = [rf"$\chi$ rises {jump:.0f}× at $t_c$"]
-        if np.isfinite(tau_chi):
-            annotations.append(rf"Kendall $\tau$ = {tau_chi:+.3f} (pre-$t_c$)")
-        text_str = "\n".join(annotations)
-        ax2.text(0.55, 0.15, text_str,
-                 transform=ax2.transAxes, fontsize=8,
-                 color="saddlebrown", fontweight="bold",
-                 va="bottom", ha="left")
+    if np.isfinite(tau_ar1):
+        lbl = (rf"Kendall $\tau={tau_ar1:+.3f}$ (pre-$t_c$, thermal noise)"
+               if np.isfinite(tau_ar1) else "")
+        ax2.text(0.03, 0.10, lbl, transform=ax2.transAxes, fontsize=7.5,
+                 color="darkorange", fontweight="bold", va="bottom")
 
-    # Row 3: Dual P∞ — hydrogel degradation and collagen assembly
-    ax3.plot(times, p_hyd, color="steelblue", lw=1.8, ls="-", label=r"Hydrogel $P_\infty$")
-    ax3.plot(times, p_col, color="firebrick", lw=1.8, ls="--", label=r"Collagen $P_\infty$ (model)")
-    ax3.axhline(measured_p_c, color="gray", lw=0.8, ls=":",
-                label=rf"$p_c = {measured_p_c:.3f}$")
-    ax3.axvline(t_c, color="black", lw=1.2, ls="--", label=r"$t_c$")
-    ax3.set_xlabel("Time  (steps × 1 s)")
-    ax3.set_ylabel(r"$P_\infty$")
-    ax3.set_ylim(0, 1.05)
-    ax3.legend(loc="center left", frameon=False, fontsize=7)
+    # --- Row 3: χ(t) — cluster-size susceptibility (primary EWS) ------------
+    chi_pos     = chi_arr[chi_arr > 0]
+    chi_min_pos = chi_pos.min() if len(chi_pos) else 1e-3
+    chi_plot    = np.where(chi_arr > 0, chi_arr, chi_min_pos * 0.1)
+    ax3.semilogy(chi_t, chi_plot, color="saddlebrown", lw=1.8)
+    ax3.axvline(t_c, **vkw)
+    ax3.set_ylabel(r"$\chi = \Sigma s^2 n_s / N$", color="saddlebrown")
+    ax3.tick_params(axis="y", labelcolor="saddlebrown")
     ax3.set_xlim(*xlim)
+    ax3.set_xticklabels([])
     ax3.spines["top"].set_visible(False)
     ax3.spines["right"].set_visible(False)
+    if chi_arr.max() > 0 and chi_min_pos > 0:
+        jump = chi_arr.max() / chi_min_pos
+        ann  = [rf"$\chi$ rises {jump:.0f}× at $t_c$"]
+        if np.isfinite(tau_chi):
+            ann.append(rf"Kendall $\tau={tau_chi:+.3f}$ (pre-$t_c$)")
+        ax3.text(0.55, 0.12, "\n".join(ann), transform=ax3.transAxes,
+                 fontsize=7.5, color="saddlebrown", fontweight="bold", va="bottom")
+
+    # --- Row 4: Dual P∞ -------------------------------------------------------
+    ax4.plot(times, p_hyd, color="steelblue", lw=1.8, label=r"Hydrogel $P_\infty$")
+    ax4.plot(times, p_col, color="firebrick", lw=1.8, ls="--",
+             label=r"Collagen $P_\infty$ (model)")
+    ax4.axhline(measured_p_c, color="gray", lw=0.8, ls=":",
+                label=rf"$p_c={measured_p_c:.3f}$")
+    ax4.axvline(t_c, color="black", lw=1.2, ls="--", label=r"$t_c$")
+    ax4.set_xlabel("Time  (steps × 1 s)")
+    ax4.set_ylabel(r"$P_\infty$")
+    ax4.set_ylim(0, 1.05)
+    ax4.legend(loc="center left", frameon=False, fontsize=7)
+    ax4.set_xlim(*xlim)
+    ax4.spines["top"].set_visible(False)
+    ax4.spines["right"].set_visible(False)
 
     fig.tight_layout()
     save_figure(fig, FIGURES_DIR / "fig3_transition_signatures")

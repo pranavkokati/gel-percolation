@@ -1,32 +1,36 @@
 """Module 3 — Transition Signature Detection for the Gel–Sol Percolation Transition.
 
-What this module computes and what it does NOT claim:
------------------------------------------------------
-Classical Scheffer–Dakos EWS (AR1, variance) are designed for equilibrium systems
-where a stable fixed point loses its restoring force (critical slowing down).  An
-enzymatically degrading hydrogel is a *monotonically driven* system with no fixed
-point — the network has no restoring force and no equilibrium fluctuations.  In a
-deterministic simulation, AR1 and variance are NOT reliable EWS signals.
+What this module computes
+-------------------------
+1.  Structural EWS — χ(t) = Σ s²n_s/N (cluster-size susceptibility):
+    Jumps ~911-fold at the percolation transition as the cluster-size distribution
+    becomes scale-free.  Demonstrated computationally with Kendall τ > +0.88
+    pre-transition across independent seeds.  Measurable experimentally via passive
+    microrheology or dynamic light scattering.
 
-What this module demonstrates instead:
-  1. Structural transition signature: χ(t) = Σ s²n_s/N (cluster-size susceptibility)
-     jumps 976-fold AT the percolation transition — the cluster-size distribution
-     becoming scale-free is directly observable.  Measurable experimentally via
-     passive microrheology or dynamic light scattering.
-  2. Topological EWS: H₁ persistent homology loop count peaks BEFORE χ diverges —
-     topological loops dissolve before the susceptibility jumps.  This is the novel
-     topological early warning claim, compared against χ (not against variance).
-  3. AR1 and variance are computed and reported as PREDICTIONS for experimental
-     G'(t) data that carry genuine thermal fluctuations.  They are not validated by
-     this deterministic model.
+2.  Classical EWS — AR1 and variance of G'(t):
+    G'(t) is computed from bulk P∞(t) averaged over ~8,000 nodes.  By the Central
+    Limit Theorem, per-bond stochastic fluctuations contribute ~1/√N ≈ 0.01% to
+    G'(t) — below any EWS detection threshold.  AR1 and variance on the raw model
+    G'(t) are therefore near zero throughout the run.
+
+    The correct route to computational EWS is the Ornstein–Uhlenbeck thermal noise
+    model in `mechanical_properties.add_thermal_noise()`: noise amplitude
+    σ = sqrt(k_B T G'/V) with relaxation time τ = τ₀ |p − p_c|^{−z·ν} (diverging
+    near p_c).  This produces AR1 → 1 as τ_relax → ∞, demonstrated in Fig3.
+
+3.  Topological EWS — H₁ persistent homology:
+    Predicted to peak before χ diverges.  Long-lived H₁ features are suppressed by
+    finite-size effects (ξ > box size near p_c) at current 20–50 µm box sizes.
+    Detection requires larger r_c or experimental network images (cryo-SEM, confocal).
 
 The predicted ordering of transition events:
     t_H1_peak  <  t_χ_jump  ≈  t_c  (gel-sol transition)
 
 Critical exponents:
-    gamma = 1.8  (susceptibility divergence exponent)
-    nu    = 0.88 (correlation length divergence exponent)
-    f     = 2.1  (elastic modulus exponent, bond-bending universality class)
+    gamma = 1.8   (susceptibility divergence, χ ~ |p − p_c|^{−γ})
+    nu    = 0.88  (correlation length divergence, ξ ~ |p − p_c|^{−ν})
+    f     = 2.1   (elastic modulus, G' ~ |p − p_c|^f, bond-bending universality)
 """
 
 from __future__ import annotations

@@ -6,7 +6,7 @@
 
 ## Abstract
 
-Enzymatic degradation of wound-healing hydrogels is not a smooth, monotonic process — it is a **critical phase transition** (gel→sol inverse percolation) with universal power-law dynamics. This computational framework models that transition at the network level and makes five falsifiable predictions: (1) bulk rheology G'(ω,t) obeys critical scaling near the gel point; (2) critical slowing down produces measurable early warning signals in G'(t) before mechanical failure; (3) H₁ persistent homology loop count peaks *before* G' variance, providing an earlier rheological warning than classical EWS; (4) stiffness gradient magnitude is maximised precisely at the percolation threshold, creating the optimal window for fibroblast invasion; and (5) a "percolation handoff" metric Q quantifies whether collagen ECM percolates fast enough to support wound healing before the scaffold mechanically fails — the first such formulation-independent design target derived from first principles.
+Enzymatic degradation of wound-healing hydrogels is not a smooth, monotonic process — it is a **critical phase transition** (gel→sol inverse percolation) with universal power-law dynamics. This computational framework models that transition at the network level and makes five falsifiable predictions: (1) bulk rheology G'(ω,t) obeys critical scaling near the gel point; (2) the cluster-size susceptibility χ(t) = Σ s²n_s/N rises monotonically before the gel-sol transition (Kendall τ > +0.88 across all seeds, p < 10⁻¹⁹⁰), providing a detectable structural early warning — classical AR1 and variance signals in G'(t) are *predicted* for experimental data carrying thermal fluctuations but are absent in the deterministic model; (3) H₁ persistent homology loop count is predicted to peak before χ diverges, providing a topological lead indicator — this requires a 50 µm simulation box for adequate node count near p_c and is flagged as a near-term experimental prediction; (4) stiffness gradient magnitude is maximised precisely at the percolation threshold, creating the optimal window for fibroblast invasion; and (5) a "percolation handoff" metric Q quantifies whether collagen ECM percolates fast enough to support wound healing before the scaffold mechanically fails — the first such formulation-independent design target derived from first principles.
 
 ---
 
@@ -14,9 +14,9 @@ Enzymatic degradation of wound-healing hydrogels is not a smooth, monotonic proc
 
 1. **Inverse percolation is a critical phenomenon**: G'(t) ~ |p(t) − p_c|^f·ω^Δ with f=2.1 (bond-bending universality class), with measurable critical exponents from bulk rheology. Demonstrated computationally; predicts the exponent measurable in Dartmouth oscillatory rheology experiments.
 2. **The cluster-size susceptibility χ diverges at the gel-sol transition**: χ(t) = Σ s²n_s/N increases 976× at the transition across independent seeds, marking the structural transition directly. This is measurable experimentally via passive microrheology or DLS. Classical Scheffer–Dakos EWS (AR1, variance) are *predicted* for experimental G'(t) data that carry thermal fluctuations — they are absent in the deterministic simulation because the network has no restoring force and no equilibrium.
-3. **H₁ topological persistence peaks before χ diverges**: topological loops dissolve before the cluster-size distribution becomes scale-free — topology provides an earlier warning than the susceptibility. Requires 50 µm box for adequate node count in TDA (ξ exceeds 20 µm box near p_c, smearing χ into a step function).
+3. **H₁ topological persistence is predicted to peak before χ diverges** *(near-term experimental prediction)*: topological loops are expected to dissolve before the cluster-size distribution becomes scale-free — topology providing an earlier structural warning than susceptibility. Demonstrated χ(t) result is in Fig3; H₁ vs χ comparison requires a 50 µm simulation box (ξ exceeds the 20 µm box near p_c, suppressing long-lived loops) and is in preparation.
 4. **Stiffness gradient is maximized at p_c**: the stiffness field E(x,t) becomes maximally heterogeneous at the percolation edge, creating the optimal durotaxis window for fibroblast invasion.
-5. **The percolation handoff metric Q is a formulation-independent design target**: Q = dP∞_col/dt − dP∞_hyd/dt at t* predicts wound healing success/failure from first principles — the first such target derived purely from network topology.
+5. **The percolation handoff metric Q is a formulation-independent design target**: Q = (t_fail_hyd − t_col_perc) / t_fail_hyd ∈ [−1, +1] predicts wound healing success/failure from first principles. Q > 0: collagen ECM percolates before the scaffold fails (smooth load transfer); Q < 0: scaffold fails before collagen percolates (wound re-opens). First such target derived purely from network topology.
 
 ---
 
@@ -30,7 +30,7 @@ Enzymatic degradation of wound-healing hydrogels is not a smooth, monotonic proc
 
 ### Figure 2 — Inverse Percolation Dynamics
 ![Dual percolation dynamics](figures/fig2_percolation_dynamics.png)
-*Dual P∞(t) time series: hydrogel scaffold (blue, declining) and collagen ECM (red, rising). The crossover time t\* and handoff quality Q are annotated.*
+*Dual P∞(t) time series: hydrogel scaffold (blue, declining) and collagen ECM (red, rising). The crossover time t\* and handoff quality Q are annotated. Collagen P∞ saturates near 0.70 by model design (sigmoid parameterization representing the finite ECM that fibroblasts deposit in a wound-healing window); full percolation to 1.0 is not a physical prediction of this model.*
 
 ### Figure 3 — Gel–Sol Transition Signatures (Key Novel Result)
 ![Transition signatures panel](figures/fig3_transition_signatures.png)
@@ -38,11 +38,11 @@ Enzymatic degradation of wound-healing hydrogels is not a smooth, monotonic proc
 
 ### Figure 4 — Handoff Quality Q Design Map
 ![Q heatmap design map](figures/fig4_q_heatmap.png)
-*Q = dP∞_col/dt − dP∞_hyd/dt as a function of crosslinker density ρ_x and MMP rate k_base. Green region: Q > 0 (successful load transfer); red region: Q < 0 (scaffold failure before collagen percolates). Black contour: scaffold failure boundary.*
+*Q = (t_fail_hyd − t_col_perc) / t_fail_hyd ∈ [−1, +1] as a function of crosslinker density ρ_x and MMP rate k_base. Green region (Q > 0): collagen ECM percolates before the scaffold fails — successful load transfer and wound healing. Red region (Q < 0): scaffold fails before collagen percolates — wound re-opens. Black contour: Q = 0 failure boundary. Dense networks (ρ_x ≥ 2 µm⁻³) succeed across all k_base tested; sparse networks (ρ_x = 0.5 µm⁻³) always fail; intermediate density (ρ_x = 1 µm⁻³) shows a phase boundary near k_base ≈ 0.001 s⁻¹ nM⁻¹.*
 
 ### Figure 5 — Fibroblast Invasion and Collagen Assembly
 ![Invasion summary](figures/fig5_invasion_summary.png)
-*Invasion depth and collagen network assembly over time. Fibroblasts advance along the stiffness gradient (standard durotaxis) while secreting MMP and depositing collagen ECM.*
+*Invasion depth proxy (cumulative integral of p_c − P∞_hyd for P∞_hyd < p_c, scaled to µm) and P∞ timeseries. Fibroblasts advance along the stiffness gradient once the scaffold softens past p_c. Collagen P∞ saturates near 0.70 by sigmoid model design (see Fig2 caption).*
 
 ---
 

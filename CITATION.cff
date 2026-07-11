@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "gelrigidity: a dual-rigidity-percolation load-path-continuity model for enzymatically degrading hydrogel wound scaffolds"
+type: software
+authors:
+  - family-names: Kokati
+    given-names: Pranav
+version: 0.2.0
+date-released: 2026-07-10
+license: MIT
+repository-code: "https://github.com/pranavkokati/gel-percolation"
+keywords:
+  - rigidity percolation
+  - random geometric graph
+  - hydrogel degradation
+  - wound healing
+  - biomaterials
+  - elastic network model

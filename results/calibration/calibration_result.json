@@ -1,0 +1,33 @@
+{
+  "source_doi": "10.1039/C2SM27303A",
+  "route_a_seconds_per_step": {
+    "using_tc": 36.0,
+    "using_total_degradation_time": 48.648648648648646
+  },
+  "route_a_minutes_per_step": {
+    "using_tc": 0.6,
+    "using_total_degradation_time": 0.8108108108108107
+  },
+  "route_b_real_MMP_concentration_nM_bracket": [
+    1538.4615384615386,
+    2941.1764705882356
+  ],
+  "route_b_k_eff_s-1_bracket": [
+    0.0007692307692307692,
+    0.0061764705882352946
+  ],
+  "route_b_characteristic_bond_lifetime_min_bracket": [
+    2.698412698412698,
+    21.666666666666668
+  ],
+  "model_k_eff_per_s_at_MMP_field=1_using_route_a_dt": [
+    0.0003333333333333333,
+    0.0002466666666666667
+  ],
+  "cross_check_ratio_model_over_real_bracket": [
+    0.03993650793650794,
+    0.4333333333333333
+  ],
+  "tau_gap_steps_used": 185,
+  "k_base_production_used": 0.012
+}

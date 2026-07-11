@@ -1,0 +1,4 @@
+quantity,measured,published,reference,deviation
+FCC connectivity threshold $p_c$,0.12,0.1201,exact (Sykes-Essam; Wang 2013),0.1%
+FCC rigidity threshold $p_r$,0.483,0.495,Chubynsky & Thorpe (2007),2.4%
+modulus exponent $f$ (effective medium),1.04,1.0,Feng-Thorpe-Garboczi EMT (1985),4%

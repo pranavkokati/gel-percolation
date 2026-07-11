@@ -1,0 +1,304 @@
+{
+  "raw_runs": [
+    {
+      "kb": 0.004,
+      "kd": 0.008,
+      "seed": 11,
+      "Q_measured": 2.6334701762318047,
+      "safe_measured": true,
+      "Q_meanfield": 1.8490262213864124,
+      "safe_meanfield": true,
+      "t_valley_measured": 210.0,
+      "t_valley_meanfield": 250.0
+    },
+    {
+      "kb": 0.004,
+      "kd": 0.008,
+      "seed": 22,
+      "Q_measured": 2.2877900239467768,
+      "safe_measured": true,
+      "Q_meanfield": 1.8269870310545344,
+      "safe_meanfield": true,
+      "t_valley_measured": 200.0,
+      "t_valley_meanfield": 250.0
+    },
+    {
+      "kb": 0.004,
+      "kd": 0.05,
+      "seed": 11,
+      "Q_measured": 5.0,
+      "safe_measured": true,
+      "Q_meanfield": 4.972332641146838,
+      "safe_meanfield": true,
+      "t_valley_measured": 0.0,
+      "t_valley_meanfield": 10.0
+    },
+    {
+      "kb": 0.004,
+      "kd": 0.05,
+      "seed": 22,
+      "Q_measured": 4.999999999999999,
+      "safe_measured": true,
+      "Q_meanfield": 4.942142189846095,
+      "safe_meanfield": true,
+      "t_valley_measured": 0.0,
+      "t_valley_meanfield": 10.0
+    },
+    {
+      "kb": 0.019,
+      "kd": 0.008,
+      "seed": 11,
+      "Q_measured": 2.4799341101621926e-08,
+      "safe_measured": false,
+      "Q_meanfield": 0.006713849638447983,
+      "safe_meanfield": false,
+      "t_valley_measured": 120.0,
+      "t_valley_meanfield": 180.0
+    },
+    {
+      "kb": 0.019,
+      "kd": 0.008,
+      "seed": 22,
+      "Q_measured": 2.7574333357389646e-12,
+      "safe_measured": false,
+      "Q_meanfield": 7.834953716590349e-10,
+      "safe_meanfield": false,
+      "t_valley_measured": 190.0,
+      "t_valley_meanfield": 170.0
+    },
+    {
+      "kb": 0.019,
+      "kd": 0.05,
+      "seed": 11,
+      "Q_measured": 3.143827638025355,
+      "safe_measured": true,
+      "Q_meanfield": 4.254488980024386,
+      "safe_meanfield": true,
+      "t_valley_measured": 60.0,
+      "t_valley_meanfield": 10.0
+    },
+    {
+      "kb": 0.019,
+      "kd": 0.05,
+      "seed": 22,
+      "Q_measured": 2.6377454432721015,
+      "safe_measured": true,
+      "Q_meanfield": 4.243115813570975,
+      "safe_meanfield": true,
+      "t_valley_measured": 60.0,
+      "t_valley_meanfield": 10.0
+    },
+    {
+      "kb": 0.004,
+      "kd": 0.008,
+      "seed": 33,
+      "Q_measured": 2.7276634849680654,
+      "safe_measured": true,
+      "Q_meanfield": 2.7039596329318423,
+      "safe_meanfield": true,
+      "t_valley_measured": 105.0,
+      "t_valley_meanfield": 150.0
+    },
+    {
+      "kb": 0.004,
+      "kd": 0.008,
+      "seed": 44,
+      "Q_measured": 2.6259714014478375,
+      "safe_measured": true,
+      "Q_meanfield": 2.7187730335120635,
+      "safe_meanfield": true,
+      "t_valley_measured": 150.0,
+      "t_valley_meanfield": 150.0
+    },
+    {
+      "kb": 0.004,
+      "kd": 0.008,
+      "seed": 55,
+      "Q_measured": 2.963800140066643,
+      "safe_measured": true,
+      "Q_meanfield": 2.778446035803337,
+      "safe_meanfield": true,
+      "t_valley_measured": 120.0,
+      "t_valley_meanfield": 150.0
+    },
+    {
+      "kb": 0.004,
+      "kd": 0.05,
+      "seed": 33,
+      "Q_measured": 4.999999999999999,
+      "safe_measured": true,
+      "Q_meanfield": 4.999999999999999,
+      "safe_meanfield": true,
+      "t_valley_measured": 0.0,
+      "t_valley_meanfield": 0.0
+    },
+    {
+      "kb": 0.004,
+      "kd": 0.05,
+      "seed": 44,
+      "Q_measured": 5.0,
+      "safe_measured": true,
+      "Q_meanfield": 5.0,
+      "safe_meanfield": true,
+      "t_valley_measured": 0.0,
+      "t_valley_meanfield": 0.0
+    },
+    {
+      "kb": 0.004,
+      "kd": 0.05,
+      "seed": 55,
+      "Q_measured": 5.0,
+      "safe_measured": true,
+      "Q_meanfield": 5.0,
+      "safe_meanfield": true,
+      "t_valley_measured": 0.0,
+      "t_valley_meanfield": 0.0
+    },
+    {
+      "kb": 0.019,
+      "kd": 0.008,
+      "seed": 33,
+      "Q_measured": 9.702070978971798e-14,
+      "safe_measured": false,
+      "Q_meanfield": 0.10774152663641491,
+      "safe_meanfield": false,
+      "t_valley_measured": 105.0,
+      "t_valley_meanfield": 150.0
+    },
+    {
+      "kb": 0.019,
+      "kd": 0.008,
+      "seed": 44,
+      "Q_measured": 2.0733900944571993e-14,
+      "safe_measured": false,
+      "Q_meanfield": 0.14462587288365394,
+      "safe_meanfield": false,
+      "t_valley_measured": 120.0,
+      "t_valley_meanfield": 150.0
+    },
+    {
+      "kb": 0.019,
+      "kd": 0.008,
+      "seed": 55,
+      "Q_measured": 0.0022117647941330364,
+      "safe_measured": false,
+      "Q_meanfield": 0.12066472481021438,
+      "safe_meanfield": false,
+      "t_valley_measured": 135.0,
+      "t_valley_meanfield": 150.0
+    },
+    {
+      "kb": 0.019,
+      "kd": 0.05,
+      "seed": 33,
+      "Q_measured": 3.302559447131115,
+      "safe_measured": true,
+      "Q_meanfield": 4.317856852567031,
+      "safe_meanfield": true,
+      "t_valley_measured": 30.0,
+      "t_valley_meanfield": 15.0
+    },
+    {
+      "kb": 0.019,
+      "kd": 0.05,
+      "seed": 44,
+      "Q_measured": 2.9160730964111714,
+      "safe_measured": true,
+      "Q_meanfield": 3.30857093384735,
+      "safe_meanfield": true,
+      "t_valley_measured": 30.0,
+      "t_valley_meanfield": 150.0
+    },
+    {
+      "kb": 0.019,
+      "kd": 0.05,
+      "seed": 55,
+      "Q_measured": 3.132760325282421,
+      "safe_measured": true,
+      "Q_meanfield": 4.300597474726581,
+      "safe_meanfield": true,
+      "t_valley_measured": 30.0,
+      "t_valley_meanfield": 15.0
+    },
+    {
+      "kb": 0.009,
+      "kd": 0.02,
+      "seed": 33,
+      "Q_measured": 2.650854289057092,
+      "safe_measured": true,
+      "Q_meanfield": 1.7473642923527621,
+      "safe_meanfield": true,
+      "t_valley_measured": 60.0,
+      "t_valley_meanfield": 150.0
+    },
+    {
+      "kb": 0.009,
+      "kd": 0.02,
+      "seed": 44,
+      "Q_measured": 2.409786254050324,
+      "safe_measured": true,
+      "Q_meanfield": 1.4647274725960628,
+      "safe_meanfield": true,
+      "t_valley_measured": 105.0,
+      "t_valley_meanfield": 150.0
+    },
+    {
+      "kb": 0.009,
+      "kd": 0.02,
+      "seed": 55,
+      "Q_measured": 3.357230290277633,
+      "safe_measured": true,
+      "Q_meanfield": 1.866080248997285,
+      "safe_meanfield": true,
+      "t_valley_measured": 60.0,
+      "t_valley_meanfield": 150.0
+    }
+  ],
+  "combo_stats": [
+    {
+      "kb": 0.004,
+      "kd": 0.008,
+      "n": 5,
+      "Qmeas_mean": 2.6477390453322256,
+      "Qmeas_std": 0.21749632668063443,
+      "Qmf_mean": 2.3754383909376378,
+      "Qmf_std": 0.43957450141303106
+    },
+    {
+      "kb": 0.004,
+      "kd": 0.05,
+      "n": 5,
+      "Qmeas_mean": 5.0,
+      "Qmeas_std": 5.617333549722722e-16,
+      "Qmf_mean": 4.982894966198587,
+      "Qmf_std": 0.02302215469923468
+    },
+    {
+      "kb": 0.009,
+      "kd": 0.02,
+      "n": 3,
+      "Qmeas_mean": 2.8059569444616828,
+      "Qmeas_std": 0.4020407738284266,
+      "Qmf_mean": 1.6927240046487035,
+      "Qmf_std": 0.16834524755499553
+    },
+    {
+      "kb": 0.019,
+      "kd": 0.008,
+      "n": 5,
+      "Qmeas_mean": 0.0004423579192698652,
+      "Qmeas_std": 0.0008847034374837183,
+      "Qmf_mean": 0.07594919495044532,
+      "Qmf_std": 0.06047897186906016
+    },
+    {
+      "kb": 0.019,
+      "kd": 0.05,
+      "n": 5,
+      "Qmeas_mean": 3.0265931900244327,
+      "Qmeas_std": 0.23003913263403233,
+      "Qmf_mean": 4.084926010947266,
+      "Qmf_std": 0.3891718841698607
+    }
+  ]
+}

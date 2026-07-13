@@ -1,4 +1,4 @@
-# gelrigidity: Dual-Rigidity-Percolation Load-Path-Continuity Model for Enzymatically Degrading Hydrogel Wound Scaffolds
+# Dual-Rigidity-Percolation Load-Path-Continuity Model for Enzymatically Degrading Hydrogel Wound Scaffolds
 
 **A finite-rate, network-resolved rigidity-percolation framework quantifying whether a degrading hydrogel scaffold hands off mechanical load to a growing ECM network fast enough to prevent wound re-opening.**
 

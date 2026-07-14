@@ -34,21 +34,6 @@ topology that the coupled degradation/deposition dynamics actually run on. See
 
 ---
 
-## 2. Audit of the original repository
-
-The original repository (`gel-percolation`, v0.1.0) is well-organised —
-~9,600 lines, modular `src/` layout, a test suite (21/22 passing on install),
-serialization, and five figures. The network-construction module
-(`network_model.py`) is physically sound: a 3D random geometric graph with
-Poisson node placement, KDTree bond finding within a cutoff, lognormal chain
-lengths, and a genuinely-measured cluster-size susceptibility
-χ = Σ s²n_s/N that correctly excludes the spanning cluster. That module is
-worth keeping.
-
-The problem is that the **headline scientific claims are not produced by
-measurement** — they are produced by assumption, and then "recovered" by
-fitting the assumption back out. Six specific findings:
-
 **2.1 The elastic exponent f = 2.1 is circular.**
 `mechanical_properties.py` does not compute a modulus from any network. It
 evaluates a closed-form constitutive law G ∝ ε^f with the exponent f pulled

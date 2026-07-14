@@ -1,9 +1,5 @@
 # Rigidity-Percolation Analysis of the Scaffold→ECM Load Handoff in Degrading Wound-Healing Hydrogels
 
-**A code audit, novelty assessment, and rebuilt computational framework**
-
----
-
 ## 1. Executive summary
 
 The central scientific object of the rebuild is the **time-resolved divergence

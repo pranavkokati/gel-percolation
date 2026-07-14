@@ -6,13 +6,6 @@
 
 ## 1. Executive summary
 
-This document does two things. First, it audits the original `gel-percolation`
-repository against the standard the author set for it — that the work be
-genuinely novel, useful, and supported by its own results. Second, because that
-audit found the original claims were **not** supported by the original code, it
-replaces the unsupported core with a framework built on a quantity the original
-never computed: the **measured shear modulus of the actual network**.
-
 The central scientific object of the rebuild is the **time-resolved divergence
 between connectivity percolation and rigidity percolation** in a hydrogel that
 is simultaneously (i) losing scaffold bonds to enzymatic (MMP) degradation and

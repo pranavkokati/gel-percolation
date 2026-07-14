@@ -2,8 +2,6 @@
 
 **A finite-rate, network-resolved rigidity-percolation framework quantifying whether a degrading hydrogel scaffold hands off mechanical load to a growing ECM network fast enough to prevent wound re-opening.**
 
----
-
 ## What this is
 
 A wound-healing hydrogel scaffold is progressively cleaved by matrix metalloproteinases (MMPs) while fibroblasts simultaneously deposit new collagen extracellular matrix (ECM) within it. The scaffold's ability to bear mechanical load is not the same thing as its connectivity: a network can remain a single geometrically spanning cluster while carrying essentially zero shear stress, because rigidity percolation (the threshold at which a spanning set of bonds first constrains all non-trivial deformations) sits at a strictly higher bond-occupation fraction than connectivity percolation. This package:

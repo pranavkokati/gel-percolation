@@ -1,11 +1,5 @@
 # A dual-rigidity-percolation criterion for the scaffold-to-ECM mechanical handoff in degrading wound hydrogels
 
-**Target journal:** *Soft Matter* (Royal Society of Chemistry) — full paper.
-Rationale for venue choice is recorded in `paper/journal_positioning.md`.
-
-**Author:** Pranav Kokati
-
----
 
 ## Abstract
 

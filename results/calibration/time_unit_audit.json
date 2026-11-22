@@ -1,0 +1,28 @@
+{
+ "route_B_dt_s_per_step": [
+  1.9428571428571428,
+  15.6
+ ],
+ "route_A_dt_s_per_step": 36.0,
+ "rigidity_loss_pr_0.41": {
+  "steps": 74.29984327364862,
+  "minutes": [
+   2.405899686956241,
+   19.31795925114864
+  ]
+ },
+ "connectivity_loss_pc_0.113": {
+  "steps": 181.69728835581637,
+  "minutes": [
+   5.883531241997863,
+   47.24129497251226
+  ]
+ },
+ "tau_gap_pure_degradation_steps": 107.39744508216775,
+ "tau_gap_minutes": [
+  3.4776315550416226,
+  27.923335721363614
+ ],
+ "experimental_gel_time_min": 111.0,
+ "note": "Route B dt is an order-of-magnitude bracket (2 x 2 corners of k* and enzyme MW). Experimental gel time is a different gel chemistry (PEG-peptide, flexible), so the comparison tests order of magnitude only."
+}

@@ -1,0 +1,4 @@
+quantity,measured,published,reference,deviation_percent
+FCC bond connectivity threshold p_c,0.120,0.12016,Lorenz & Ziff (1998) Phys. Rev. E 57 230,0.1
+FCC rigidity threshold p_r,0.483,0.495,Chubynsky & Thorpe (2007) Phys. Rev. E 76 041135,2.4
+Modulus exponent f (effective-medium),1.04,1.0,Feng Thorpe & Garboczi (1985) Phys. Rev. B 31 276,4.0

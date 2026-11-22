@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gelrigidity"
+version = "0.3.0"
+description = "Rigidity percolation in degrading hydrogels replaced by newly deposited matrix"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+authors = [{ name = "Pranav Kokati" }]
+dependencies = ["numpy", "scipy", "pandas", "matplotlib"]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.setuptools]
+packages = ["gelrigidity"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

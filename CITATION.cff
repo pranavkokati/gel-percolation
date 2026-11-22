@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "gelrigidity: rigidity percolation in degrading hydrogels replaced by newly deposited matrix"
+type: software
+authors:
+  - family-names: Kokati
+    given-names: Pranav
+version: 0.3.0
+date-released: 2026-11-22
+license: MIT
+repository-code: "https://github.com/pranavkokati/gel-percolation"
+keywords:
+  - rigidity percolation
+  - random geometric graph
+  - hydrogel degradation
+  - wound healing
+  - elastic network model
